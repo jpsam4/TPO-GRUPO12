@@ -93,4 +93,6 @@ la relajación de aristas está mal.
 - [ ] `docs/ENDPOINTS.md` documenta entrada y salida de cada endpoint
 - [ ] el README explica **qué dominio eligieron y qué representa el costo**
 
-Ver `GUIA-TPO.md` para el paso a paso.
+Ver `GUIA-TPO.md` para el paso a paso y `docs/CONSIGNAS-TPO.md` para el
+reglamento completo (fechas de hitos, calificación, admisibilidad,
+penalizaciones y habilitación al Segundo Parcial).
