@@ -1,0 +1,39 @@
+name: CI
+
+# Los tests corren en cada push y en cada PR.
+# GrafoTest es un test unitario puro: no necesita Neo4j levantado.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      - name: Tests
+        run: mvn -B clean test
+
+      - name: Verificar que compila el jar
+        run: mvn -B package -DskipTests
+
+      # Falla el build si alguien commitea una password.
+      # El patron ignora los placeholders ${VAR} y solo salta cuando el valor
+      # es un literal. Probado contra falsos positivos en application.properties
+      # y docker-compose.yml.
+      - name: Chequear que no haya credenciales commiteadas
+        run: |
+          if git grep -nIP '(?<!\$\{)\b(password|PASSWORD|NEO4J_PASSWORD)\b\s*[=:]\s*(?!\$\{)\S' -- ':!*.md' ':!.env.example'; then
+            echo "::error::Hay algo que parece una credencial en un archivo versionado"
+            exit 1
+          fi
+          echo "OK: sin credenciales en archivos versionados"

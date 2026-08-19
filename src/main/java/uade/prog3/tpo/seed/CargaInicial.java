@@ -7,8 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import uade.prog3.tpo.model.Item;
 import uade.prog3.tpo.model.Nodo;
-import uade.prog3.tpo.repository.ItemRepository;
-import uade.prog3.tpo.repository.NodoRepository;
+import uade.prog3.tpo.repository.AlmacenNeo4j;
 
 import java.util.List;
 
@@ -34,17 +33,15 @@ public class CargaInicial implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(CargaInicial.class);
 
-    private final NodoRepository nodoRepository;
-    private final ItemRepository itemRepository;
+    private final AlmacenNeo4j almacen;
 
-    public CargaInicial(NodoRepository nodoRepository, ItemRepository itemRepository) {
-        this.nodoRepository = nodoRepository;
-        this.itemRepository = itemRepository;
+    public CargaInicial(AlmacenNeo4j almacen) {
+        this.almacen = almacen;
     }
 
     @Override
     public void run(String... args) {
-        if (nodoRepository.count() > 0) {
+        if (almacen.contarNodos() > 0) {
             log.info("La base ya tiene datos. No se ejecuta la carga inicial.");
             return;
         }
@@ -73,7 +70,7 @@ public class CargaInicial implements CommandLineRunner {
         f.conectar(h, 3);
         g.conectar(h, 4);
 
-        nodoRepository.saveAll(List.of(a, b, c, d, e, f, g, h));
+        almacen.guardarNodos(List.of(a, b, c, d, e, f, g, h));
 
         // Items para los problemas de seleccion bajo restriccion.
         //
@@ -81,7 +78,7 @@ public class CargaInicial implements CommandLineRunner {
         // elige {I4, I2} y obtiene 90, mientras que el optimo real es {I4, I5}
         // con 105. Es el contraejemplo que se necesita para comparar greedy
         // contra programacion dinamica.
-        itemRepository.saveAll(List.of(
+        almacen.guardarItems(List.of(
                 new Item("I1", "Item 1", 5, 10, "A"),
                 new Item("I2", "Item 2", 4, 40, "B"),
                 new Item("I3", "Item 3", 6, 30, "C"),
@@ -89,7 +86,7 @@ public class CargaInicial implements CommandLineRunner {
                 new Item("I5", "Item 5", 7, 55, "E")
         ));
 
-        log.info("Carga inicial completada: 8 nodos, 12 aristas, 5 items.");
+        log.info("Carga inicial completada: 8 nodos, 12 aristas, 5 items. Transporte: {}", almacen.descripcionDelTransporte());
         log.info("Para desactivarla: app.seed.enabled=false");
     }
 }

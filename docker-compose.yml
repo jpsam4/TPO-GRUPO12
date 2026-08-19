@@ -1,0 +1,37 @@
+# Base de datos Neo4j para el TPO.
+#
+#   docker compose up -d      levantar
+#   docker compose down       apagar (los datos quedan en el volumen)
+#   docker compose down -v    apagar y BORRAR los datos
+#
+# Browser: http://localhost:7474
+# Bolt:    bolt://localhost:7687
+#
+# La password NO se escribe aca: Compose la lee del archivo .env (que esta en
+# .gitignore). Antes de levantar por primera vez:  cp .env.example .env
+
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    container_name: tpo-neo4j
+    ports:
+      - "7474:7474"   # HTTP / Neo4j Browser
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?falta NEO4J_PASSWORD - copiar .env.example a .env}"
+      NEO4J_server_memory_heap_initial__size: "512m"
+      NEO4J_server_memory_heap_max__size: "1G"
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD} 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  neo4j-data:
+  neo4j-logs:
