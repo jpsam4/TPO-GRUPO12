@@ -9,34 +9,33 @@ credenciales en paneles web.
 
 ---
 
-## 1. Secrets del repositorio (para el keep-alive)
+## 1. Secrets del repositorio — **YA ESTA HECHO**
 
-El workflow `mantener-aura-viva.yml` consulta Aura cada dos días para que la
-instancia gratuita no se pause y termine borrada. Necesita cuatro secrets.
+Los cuatro secrets estan cargados y el keep-alive se probo corriendo:
 
-**Settings → Secrets and variables → Actions → New repository secret**
+```
+NEO4J_URI  NEO4J_USER  NEO4J_PASSWORD  NEO4J_DATABASE     (19/08/2026)
 
-| Secret | Valor |
-|---|---|
-| `NEO4J_URI` | `neo4j+s://3ae8699b.databases.neo4j.io` |
-| `NEO4J_USER` | `3ae8699b` |
-| `NEO4J_PASSWORD` | la del archivo `Neo4j-3ae8699b-Created-*.txt` |
-| `NEO4J_DATABASE` | `3ae8699b` |
-
-O por línea de comandos, si tenés `gh` configurado:
-
-```bash
-gh secret set NEO4J_URI      --body "neo4j+s://3ae8699b.databases.neo4j.io"
-gh secret set NEO4J_USER     --body "3ae8699b"
-gh secret set NEO4J_PASSWORD                 # lo pide por consola, no queda en el historial
-gh secret set NEO4J_DATABASE --body "3ae8699b"
+Actions > Mantener Aura viva > run 32263445860 -> success (7s)
+Respuesta: {"data":{"fields":["nodos"],"values":[[8]]}, ...}
+Aura respondio bien: la instancia sigue activa.
 ```
 
-Para probarlo sin esperar dos días: pestaña **Actions → Mantener Aura viva →
-Run workflow**. Si faltan los secrets el job no falla, solo avisa y no hace nada.
+El workflow consulta Aura cada dos dias para que la instancia gratuita no se
+pause y termine borrada, como ya paso con la instancia `8b37b6ab`. Los valores
+quedan enmascarados en los logs (`https://***.databases.neo4j.io/db/***/...`).
+
+Para correrlo a mano: **Actions → Mantener Aura viva → Run workflow**.
+
+Si alguna vez hay que rotar la password de Aura, hay que actualizar **los dos
+lados**: los secrets del repo y las variables del servicio en Render.
+
+```bash
+gh secret set NEO4J_PASSWORD     # la pide por consola, no queda en el historial
+```
 
 > **Ojo:** el usuario y la base de esta instancia **no** son `neo4j`, son el id
-> de la instancia. Es el error que más tiempo hace perder.
+> de la instancia (`3ae8699b`). Es el error que mas tiempo hace perder.
 
 ---
 
@@ -82,8 +81,10 @@ curl https://tpo-grupo12.onrender.com/api/grafo/resumen
 
 Como cada push a `main` redespliega, conviene que nadie empuje directo.
 
-**Esto sólo lo puede hacer quien sea dueño del repositorio** (`jpsam4`), porque
-la configuración de ramas pide permiso de administrador.
+**Esto sólo lo puede hacer `jpsam4`, el dueño del repositorio.** Comprobado el
+19/08/2026: la cuenta `joaquingit1` tiene `push` pero no `admin`, y la API
+contesta `404 Not Found` al intentar configurar la protección (GitHub devuelve
+404 en vez de 403 cuando falta el permiso de administrador).
 
 **Settings → Branches → Add branch protection rule**
 
