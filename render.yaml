@@ -1,0 +1,37 @@
+# Blueprint de Render: https://render.com/docs/blueprint-spec
+#
+# En Render: New > Blueprint > conectar este repo. Lee este archivo y crea el
+# servicio solo. Cada push a main redespliega.
+#
+# Las variables de conexion van con sync:false a proposito: Render las pide por
+# el dashboard y NO quedan escritas en el repo.
+#
+# OJO con NEO4J_DATABASE: en nuestra instancia de Aura la base NO se llama
+# "neo4j" sino con el id de la instancia. Si falta esta variable, el arranque
+# falla con "DatabaseNotFound: Database name: 'neo4j'".
+#
+# Desde Render el puerto 7687 NO esta bloqueado (eso es cosa de la red de la
+# facultad), asi que la app va a elegir sola el perfil "bolt" y usar Spring
+# Data Neo4j. Es el unico lugar donde ese camino se ejercita de verdad.
+
+services:
+  - type: web
+    name: tpo-grupo12
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/grafo/resumen
+    autoDeploy: true
+    envVars:
+      - key: NEO4J_URI
+        sync: false        # neo4j+s://xxxxxxxx.databases.neo4j.io
+      - key: NEO4J_USER
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: NEO4J_DATABASE
+        sync: false        # el id de la instancia, p.ej. 3ae8699b
+      # El plan free da 512 MB: se le pone techo al heap para que el
+      # contenedor no muera por OOM cuando arranca Spring.
+      - key: JAVA_OPTS
+        value: "-Xmx350m -XX:MaxMetaspaceSize=128m"
