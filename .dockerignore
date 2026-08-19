@@ -1,0 +1,14 @@
+# Nunca copiar credenciales ni basura al contexto de build.
+.env
+*.env
+.git
+.gitignore
+target/
+*.log
+docs/
+*.md
+.mvn/
+mvnw
+mvnw.cmd
+docker-compose.yml
+.github/
