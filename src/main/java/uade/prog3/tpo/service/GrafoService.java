@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import uade.prog3.tpo.model.Conexion;
 import uade.prog3.tpo.model.Nodo;
-import uade.prog3.tpo.repository.NodoRepository;
+import uade.prog3.tpo.repository.AlmacenNeo4j;
 
 import java.util.List;
 
@@ -24,10 +24,10 @@ public class GrafoService {
 
     private static final Logger log = LoggerFactory.getLogger(GrafoService.class);
 
-    private final NodoRepository nodoRepository;
+    private final AlmacenNeo4j almacen;
 
-    public GrafoService(NodoRepository nodoRepository) {
-        this.nodoRepository = nodoRepository;
+    public GrafoService(AlmacenNeo4j almacen) {
+        this.almacen = almacen;
     }
 
     /**
@@ -37,7 +37,7 @@ public class GrafoService {
      */
     public Grafo cargar(boolean dirigido) {
         Grafo grafo = new Grafo(dirigido);
-        List<Nodo> nodos = nodoRepository.findAll();
+        List<Nodo> nodos = almacen.todosLosNodos();
 
         // 1) primero todos los vertices, para que queden en el grafo
         //    incluso los que no tienen ninguna arista

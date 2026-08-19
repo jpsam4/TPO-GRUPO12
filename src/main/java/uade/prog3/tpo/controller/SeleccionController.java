@@ -5,7 +5,7 @@ import uade.prog3.tpo.algorithm.Ordenamiento;
 import uade.prog3.tpo.algorithm.RamificacionYPoda;
 import uade.prog3.tpo.algorithm.Seleccion;
 import uade.prog3.tpo.model.Item;
-import uade.prog3.tpo.repository.ItemRepository;
+import uade.prog3.tpo.repository.AlmacenNeo4j;
 
 import java.util.Comparator;
 import java.util.List;
@@ -18,23 +18,23 @@ import java.util.List;
 @RequestMapping("/api/seleccion")
 public class SeleccionController {
 
-    private final ItemRepository itemRepository;
+    private final AlmacenNeo4j almacen;
     private final Seleccion seleccion;
     private final Ordenamiento ordenamiento;
     private final RamificacionYPoda ramificacionYPoda;
 
-    public SeleccionController(ItemRepository itemRepository,
+    public SeleccionController(AlmacenNeo4j almacen,
                                Seleccion seleccion,
                                Ordenamiento ordenamiento,
                                RamificacionYPoda ramificacionYPoda) {
-        this.itemRepository = itemRepository;
+        this.almacen = almacen;
         this.seleccion = seleccion;
         this.ordenamiento = ordenamiento;
         this.ramificacionYPoda = ramificacionYPoda;
     }
 
     private List<Item> todos() {
-        return itemRepository.findAll();
+        return almacen.todosLosItems();
     }
 
     /** GET /api/seleccion/greedy?capacidad=10 */
