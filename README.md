@@ -1,204 +1,259 @@
-# TPO Programación III — Scaffold 2026
+# TPO Programación III — Grupo 12 · Valdoria
 
-Punto de partida del Trabajo Práctico Obligatorio. **No contiene ningún algoritmo
-implementado**: eso es exactamente lo que hay que hacer.
+## Integrantes
 
-Lo que sí trae resuelto, para que no pierdan tiempo en infraestructura:
+* Luka Kishima (@lukakishima)
+* Juan Pedro Sama (@jpsam4)
+* Joaquin Castellano (@joaquingit1)
 
-- modelo de grafo **ponderado** en Neo4j, listo para Dijkstra, Prim y Kruskal
-- carga del grafo de la base a una estructura en memoria (`Grafo`)
-- todos los endpoints ya cableados, devolviendo `501 Not Implemented`
-- datos de ejemplo que se cargan solos al arrancar
-- manejo de errores, configuración por variables de entorno y tests de base
+## Dominio: el reino de Valdoria
 
-## Cómo se corre esto
+Un juego de rol. Hace un siglo, el Archivo de Valdoria guardaba las *Reliquias del Cálculo*. Ignea, la madre de los dragones, lo quemó, y sus crías se repartieron el reino. El jugador cruza **cuatro regiones**: en cada una sale del inicio, gasta energía caminando, junta objetos en una mochila con capacidad limitada y llega a la guarida con el poder suficiente para vencer a la cría. La última guarida es la de Ignea.
 
-El camino principal es **el desplegado**: la aplicación vive en Render y la base
-en Neo4j Aura, así todo el equipo mira lo mismo sin instalar nada. Correrlo
-local es opcional y sirve para desarrollar.
+Las cuatro regiones son **fijas**: el mapa, los objetos y los costos no cambian entre partidas. Esos mismos datos son los que se cargan en Neo4j y contra los que se escriben los tests.
 
-| | Dónde corre la app | Dónde está la base | Para qué |
-|---|---|---|---|
-| **Desplegado (principal)** | Render | Aura | lo que ve el equipo y el docente |
-| Local (opcional) | tu máquina | Aura | desarrollar y probar cambios |
-| Local aislado | tu máquina | Neo4j en Docker | trabajar sin tocar la base compartida |
+### Nodo, arista y costo
 
-### Camino principal: Render
-
-El servicio se redespliega solo con cada push a `main` (`autoDeploy` en
-`render.yaml`). No hay que hacer nada más que mergear.
-
-```
-https://tpo-grupo12.onrender.com/api/grafo/resumen
-```
-
-> El plan free se duerme a los ~15 minutos sin uso: la primera visita después
-> de un rato tarda cerca de un minuto en responder. Es normal, no está roto.
-
-Para crear el servicio la primera vez, ver
-[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
-
-### Camino opcional: correrlo local
-
-```bash
-cp .env.example .env      # completar con los datos de la instancia de Aura
-./mvnw spring-boot:run    # el .env se lee solo, no hace falta exportar nada
-```
-
-```bash
-curl "http://localhost:8080/api/grafo/resumen"
-# -> {"vertices":8,"aristas":12,"dirigido":true,"ids":["A","B",...]}
-```
-
-Si eso responde, la infraestructura está bien y lo único que queda es escribir
-algoritmos.
-
-### Camino aislado: base local en Docker
-
-Para experimentar sin ensuciar la base compartida:
-
-```bash
-docker compose up -d
-# y en .env: NEO4J_URI=bolt://localhost:7687  NEO4J_USER=neo4j  NEO4J_DATABASE=neo4j
-```
-
-## Base de datos en la nube (Neo4j Aura)
-
-El proyecto apunta a una instancia de **Neo4j Aura**, no a una base local: todo
-lo que la aplicación escriba queda en la nube y lo ve todo el grupo.
-
-| | |
+| Lo que pide el Hito 3 | En Valdoria |
 |---|---|
-| Instancia | `TPOGrupo12` (id `3ae8699b`) |
-| URI | `neo4j+s://3ae8699b.databases.neo4j.io` |
-| Base | `3ae8699b` |
-| Consola | https://console.neo4j.io |
+| **Qué es un nodo** | Una **zona** del reino: aldea, campamento, fuente, santuario, guarida… (38 en total). |
+| **Qué es una arista** | Un **camino** entre dos zonas vecinas, de ida y vuelta (grafo no dirigido). La guarida de cada región se une con el inicio de la siguiente por un **paso**. |
+| **Qué representa el costo y en qué unidad** | La **energía** que gasta el personaje al recorrer el camino, medida en **puntos de energía** (enteros positivos). Ejemplo: el camino entre la Aldea Brezo y la Fuente Clara cuesta 3 puntos de energía. |
 
-> **Ojo con esta instancia:** el usuario y el nombre de la base **no** son
-> `neo4j`, son el id de la instancia. Por eso hace falta la propiedad
-> `spring.data.neo4j.database`, que se agregó a `application.properties`: sin
-> ella el driver busca una base llamada `neo4j` y falla con
-> `DatabaseNotFound`.
+### Qué es cada cosa en el modelo
 
-Las credenciales salen del archivo `Neo4j-3ae8699b-Created-*.txt` que Aura hace
-descargar al crear la instancia. Van en `.env`, que está en `.gitignore` y
-**nunca** se commitea:
-
-```bash
-cp .env.example .env      # completar con los valores de la instancia
-set -a && . ./.env && set +a
-./mvnw spring-boot:run
-```
-
-### Conexión desde la facultad: se resuelve sola
-
-La red de UADE **bloquea TLS en todos los puertos que no sean los conocidos**
-(443, 993, 465). Bolt, el protocolo del driver de Neo4j, usa el 7687, así que
-desde la facultad el driver nunca llega a Aura.
-
-No hace falta hacer nada: la aplicación lo detecta al arrancar y usa el otro
-protocolo que Neo4j ya ofrece, la **Query API sobre HTTPS por el 443**, que sí
-está permitido.
-
-```
-[Neo4j] Probando si Bolt llega a 3ae8699b.databases.neo4j.io ...
-[Neo4j] Bolt NO responde (782 ms). Se cambia a la Query API sobre HTTPS (443).
-[Neo4j] Hablando con Neo4j por la Query API: https://3ae8699b.databases.neo4j.io/db/3ae8699b/query/v2
-Started TpoApplication in 2.3 seconds
-```
-
-| Perfil | Cómo habla con la base | Cuándo se activa |
+| Concepto | En Valdoria | En el modelo |
 |---|---|---|
-| `bolt` | Spring Data Neo4j, puerto 7687 | fuera de la facultad, Neo4j local, Render |
-| `http` | Query API, HTTPS puerto 443 | cuando el 7687 está bloqueado |
+| **Nodo** | Una zona del reino: aldea, campamento, fuente, santuario, guarida… | `Nodo` con `id` (código de región + número), `nombre`, `tipo` |
+| **Arista** | Un camino entre dos zonas vecinas, **de ida y vuelta** | relación `CONECTA` (`Conexion`) |
+| **Paso entre regiones** | El camino que une la guarida de una región con el inicio de la siguiente | también `CONECTA`, costo 5 |
+| **Costo** | **Energía** que gasta el personaje en recorrer el camino. Unidad: **puntos de energía** (enteros positivos) | `Conexion.costo` |
+| **Curación** | Energía que devuelve una zona al entrar (cada región tiene una fuente que cura 6) | `Nodo.valor` |
+| **Item** | Objeto que se puede cargar en la mochila | `Item` con `peso` (kg), `valor` (puntos de poder) y `nodoId` |
+| **Capacidad** | Peso máximo de la mochila (kg) | parámetro `capacidad` de greedy y mochila 0/1 |
 
-Los dos escriben el mismo modelo de datos, así que se ven exactamente los
-mismos nodos y aristas. Para forzar uno, poner `NEO4J_TRANSPORTE=bolt` o
-`=http` en el `.env`.
+**Códigos de región:** VB = Valle de Brezo · CN = Ciénagas de Niebla · DA = Dunas de Ámbar · CC = Cumbres de Ceniza. En cada región el número 1 es el inicio y el último número es la guarida.
 
-El detalle completo del diagnóstico está en **[docs/RED-Y-CONEXION.md](docs/RED-Y-CONEXION.md)**.
+### La prueba de los 30 segundos (`GUIA-TPO.md`)
 
-### El `.env` se carga solo
+1. **¿Qué es una arista y qué número tiene encima?** «El camino entre la Aldea Brezo (VB1) y la Fuente Clara (VB2) cuesta **3 puntos de energía**».
+2. **¿Tiene sentido buscar el camino más barato pasando por zonas intermedias?** Sí: de la Aldea Brezo a la Guarida de Ignea el camino más barato atraviesa 22 zonas y cuesta 103. El grafo no es bipartito.
+3. **¿Hay algo que seleccionar bajo una restricción de capacidad?** Sí: 25 objetos con peso y poder, una mochila de 10 kg y el reparto del botín entre tres personajes.
 
-No hace falta exportar nada: alcanza con tener el `.env` en la raíz. Además el
-`.env` **le gana** a las variables de entorno del sistema, para que una
-`NEO4J_URI` vieja apuntando a localhost no desvíe la conexión sin avisar. Si
-existe ese conflicto, la aplicación lo dice al arrancar.
+## Diagramas
 
-```bash
-./mvnw spring-boot:run     # y listo
-```
+### El reino completo
 
-### Herramientas de diagnóstico
+![Reino de Valdoria](docs/mapa-reino.png)
 
-```bash
-python scripts/probe-red.py              # qué deja pasar la red
-python scripts/seed-aura.py --verificar  # cuenta nodos/aristas/items en Aura
-python scripts/seed-aura.py --vaciar     # vacía la base (la app la recarga sola)
-python scripts/seed-aura.py --reset      # vacía y vuelve a cargar la semilla
-```
+**38 zonas, 54 caminos + 3 pasos entre regiones (57 aristas, no dirigidas) y 25 objetos.** El número sobre cada camino es la energía que cuesta recorrerlo en cualquiera de los dos sentidos.
 
-La instancia quedó cargada y verificada con el grafo de ejemplo: **8 nodos,
-12 aristas y 5 items**.
+| Paso | Une | Costo |
+|---|---|---|
+| 1 | VB8 Cubil de Musgo → CN1 Campamento de la Ciénaga | 5 |
+| 2 | CN9 Gruta de Ciénaga → DA1 Vivac del Viajero | 5 |
+| 3 | DA10 Cueva de Duna → CC1 Fogón | 5 |
 
-## Estructura
+### Las cuatro regiones
 
-```
-model/          Nodo, Conexion (arista con costo), Item
-repository/     acceso a Neo4j — repositorios BLOQUEANTES, sin Mono/Flux
-service/        Grafo (lista de adyacencia en memoria) y GrafoService (carga)
-algorithm/      >>> ACÁ VA TODO EL TRABAJO <<<  ahora son stubs con TODO
-controller/     endpoints ya cableados — NO poner lógica algorítmica acá
-seed/           datos de ejemplo
-```
+#### Región 1 · Valle de Brezo
 
-## Endpoints
+![Valle de Brezo](docs/mapa-valle-de-brezo.png)
 
-| Método | Endpoint | Algoritmo | Puntos |
+Inicio: **VB1 Aldea Brezo** · Guarida: **VB8 Cubil de Musgo** · Jefe: Musgo, la cría verde, pide **29** de poder · Energía inicial en el juego: 29
+
+<details><summary>Zonas, caminos y objetos</summary>
+
+| id | Zona | Tipo | Curación |
 |---|---|---|---|
-| GET | `/api/grafo/resumen` | — (verificación) | — |
-| GET | `/api/grafo/dfs?origen=A` | DFS | 2 (con BFS) |
-| GET | `/api/grafo/bfs?origen=A` | BFS | |
-| GET | `/api/grafo/dijkstra?origen=A&destino=H` | Dijkstra | 3 (con Prim y Kruskal) |
-| GET | `/api/grafo/prim?origen=A` | Prim | |
-| GET | `/api/grafo/kruskal` | Kruskal | |
-| GET | `/api/grafo/floyd` | Floyd-Warshall | 1 (con mochila 0/1) |
-| GET | `/api/grafo/ucs?origen=A&destino=H` | UCS | opcional |
-| GET | `/api/seleccion/greedy?capacidad=10` | Greedy | 1 |
-| GET | `/api/seleccion/dinamica?capacidad=10` | Mochila 0/1 con PD | 1 |
-| GET | `/api/seleccion/quicksort?criterio=ratio` | QuickSort | 1 (con MergeSort) |
-| GET | `/api/seleccion/mergesort?criterio=peso` | MergeSort | |
-| GET | `/api/grafo/rutas?origen=A&destino=H&costoMaximo=30` | Backtracking | 1 |
-| GET | `/api/seleccion/repartir?contenedores=3` | Branch & Bound | 1 |
+| VB1 | Aldea Brezo | Aldea |  |
+| VB2 | Fuente Clara | Fuente | 6 |
+| VB3 | Santuario del Valle | Santuario |  |
+| VB4 | Puerto Sal | Puerto |  |
+| VB5 | Molino Viejo | Molino |  |
+| VB6 | Torre Vigía | Torre |  |
+| VB7 | Castillo Alto | Castillo |  |
+| VB8 | Cubil de Musgo | Guarida |  |
 
-## El grafo de ejemplo
+| Camino | Costo |
+|---|---|
+| VB1 – VB2 (Aldea Brezo – Fuente Clara) | 3 |
+| VB2 – VB3 (Fuente Clara – Santuario del Valle) | 4 |
+| VB3 – VB4 (Santuario del Valle – Puerto Sal) | 6 |
+| VB3 – VB5 (Santuario del Valle – Molino Viejo) | 3 |
+| VB4 – VB5 (Puerto Sal – Molino Viejo) | 4 |
+| VB4 – VB6 (Puerto Sal – Torre Vigía) | 4 |
+| VB5 – VB6 (Molino Viejo – Torre Vigía) | 6 |
+| VB5 – VB7 (Molino Viejo – Castillo Alto) | 5 |
+| VB6 – VB7 (Torre Vigía – Castillo Alto) | 3 |
+| VB6 – VB8 (Torre Vigía – Cubil de Musgo) | 4 |
+| VB7 – VB8 (Castillo Alto – Cubil de Musgo) | 6 |
 
-```
-      4        3
-  A ------ B ----- C
-   \       |     / |  \
-    \ 9    | 7  /2 |11 \
-     \     |   /   |    \
-      ---- C   D --+     E
-                |  5    / \
-             8  |      /10 \ 6
-                F ----+     G
-                 \ 3        | 4
-                  H --------+
-```
+| id | Objeto | Peso (kg) | Poder | Zona |
+|---|---|---|---|---|
+| OVB1 | Armadura | 6 | 19 | VB2 Fuente Clara |
+| OVB2 | Hacha | 3 | 11 | VB1 Aldea Brezo |
+| OVB3 | Mapa | 5 | 14 | VB5 Molino Viejo |
+| OVB4 | Gema | 1 | 3 | VB4 Puerto Sal |
+| OVB5 | Arco | 4 | 16 | VB2 Fuente Clara |
 
-Aristas: A-B(4) A-C(9) B-C(3) B-D(7) C-D(2) C-E(11) D-E(5) D-F(8) E-F(6) E-G(10) F-H(3) G-H(4)
+</details>
 
-Está elegido a propósito para que el camino mínimo **no sea el directo**:
-A→C cuesta 9 en línea recta, pero A→B→C cuesta 7. Si su Dijkstra devuelve 9,
-la relajación de aristas está mal.
+#### Región 2 · Ciénagas de Niebla
 
-## Antes de entregar
+![Ciénagas de Niebla](docs/mapa-cienagas-de-niebla.png)
 
-- [ ] `./mvnw test` pasa
-- [ ] no hay ninguna contraseña en el código ni en `application.properties`
-- [ ] cada algoritmo implementado tiene al menos un test
-- [ ] `docs/ENDPOINTS.md` documenta entrada y salida de cada endpoint
-- [ ] el README explica **qué dominio eligieron y qué representa el costo**
+Inicio: **CN1 Campamento de la Ciénaga** · Guarida: **CN9 Gruta de Ciénaga** · Jefe: Ciénaga, la cría de barro, pide **59** de poder · Energía inicial en el juego: 38
 
-Ver `GUIA-TPO.md` para el paso a paso.
+<details><summary>Zonas, caminos y objetos</summary>
+
+| id | Zona | Tipo | Curación |
+|---|---|---|---|
+| CN1 | Campamento de la Ciénaga | Campamento |  |
+| CN2 | Santuario de la Niebla | Santuario |  |
+| CN3 | Charca Azul | Fuente | 6 |
+| CN4 | Choza de Barro | Cabaña |  |
+| CN5 | Ruinas Hundidas | Ruinas |  |
+| CN6 | Atalaya | Torre |  |
+| CN7 | Roble Antiguo | Arboleda |  |
+| CN8 | Palafito | Cabaña |  |
+| CN9 | Gruta de Ciénaga | Guarida |  |
+
+| Camino | Costo |
+|---|---|
+| CN1 – CN3 (Campamento de la Ciénaga – Charca Azul) | 5 |
+| CN2 – CN3 (Santuario de la Niebla – Charca Azul) | 4 |
+| CN2 – CN5 (Santuario de la Niebla – Ruinas Hundidas) | 6 |
+| CN3 – CN4 (Charca Azul – Choza de Barro) | 5 |
+| CN3 – CN5 (Charca Azul – Ruinas Hundidas) | 6 |
+| CN3 – CN6 (Charca Azul – Atalaya) | 6 |
+| CN4 – CN6 (Choza de Barro – Atalaya) | 5 |
+| CN5 – CN6 (Ruinas Hundidas – Atalaya) | 5 |
+| CN5 – CN8 (Ruinas Hundidas – Palafito) | 9 |
+| CN6 – CN7 (Atalaya – Roble Antiguo) | 4 |
+| CN7 – CN9 (Roble Antiguo – Gruta de Ciénaga) | 8 |
+| CN8 – CN9 (Palafito – Gruta de Ciénaga) | 5 |
+
+| id | Objeto | Peso (kg) | Poder | Zona |
+|---|---|---|---|---|
+| OCN1 | Arco antiguo | 7 | 34 | CN1 Campamento de la Ciénaga |
+| OCN2 | Gema antigua | 4 | 27 | CN6 Atalaya |
+| OCN3 | Lanza antigua | 4 | 29 | CN6 Atalaya |
+| OCN4 | Escudo antiguo | 4 | 22 | CN8 Palafito |
+| OCN5 | Antorcha antigua | 6 | 32 | CN3 Charca Azul |
+| OCN6 | Armadura antigua | 4 | 17 | CN8 Palafito |
+
+</details>
+
+#### Región 3 · Dunas de Ámbar
+
+![Dunas de Ámbar](docs/mapa-dunas-de-ambar.png)
+
+Inicio: **DA1 Vivac del Viajero** · Guarida: **DA10 Cueva de Duna** · Jefe: Duna, la cría de arena, pide **72** de poder · Energía inicial en el juego: 25
+
+<details><summary>Zonas, caminos y objetos</summary>
+
+| id | Zona | Tipo | Curación |
+|---|---|---|---|
+| DA1 | Vivac del Viajero | Campamento |  |
+| DA2 | Obelisco | Obelisco |  |
+| DA3 | Oasis | Fuente | 6 |
+| DA4 | Bastión | Castillo |  |
+| DA5 | Santuario de Ámbar | Santuario |  |
+| DA6 | Arcos Rotos | Ruinas |  |
+| DA7 | Minas Hondas | Minas |  |
+| DA8 | Torre Rota | Torre |  |
+| DA9 | Aguja de Piedra | Obelisco |  |
+| DA10 | Cueva de Duna | Guarida |  |
+
+| Camino | Costo |
+|---|---|
+| DA1 – DA2 (Vivac del Viajero – Obelisco) | 5 |
+| DA1 – DA3 (Vivac del Viajero – Oasis) | 4 |
+| DA2 – DA4 (Obelisco – Bastión) | 4 |
+| DA3 – DA5 (Oasis – Santuario de Ámbar) | 4 |
+| DA4 – DA5 (Bastión – Santuario de Ámbar) | 3 |
+| DA4 – DA7 (Bastión – Minas Hondas) | 9 |
+| DA5 – DA6 (Santuario de Ámbar – Arcos Rotos) | 3 |
+| DA6 – DA7 (Arcos Rotos – Minas Hondas) | 3 |
+| DA6 – DA9 (Arcos Rotos – Aguja de Piedra) | 5 |
+| DA7 – DA8 (Minas Hondas – Torre Rota) | 3 |
+| DA7 – DA9 (Minas Hondas – Aguja de Piedra) | 4 |
+| DA7 – DA10 (Minas Hondas – Cueva de Duna) | 6 |
+| DA8 – DA10 (Torre Rota – Cueva de Duna) | 5 |
+| DA9 – DA10 (Aguja de Piedra – Cueva de Duna) | 4 |
+
+| id | Objeto | Peso (kg) | Poder | Zona |
+|---|---|---|---|---|
+| ODA1 | Mapa del desierto | 3 | 19 | DA9 Aguja de Piedra |
+| ODA2 | Lanza del desierto | 2 | 13 | DA8 Torre Rota |
+| ODA3 | Arco del desierto | 3 | 16 | DA3 Oasis |
+| ODA4 | Gema del desierto | 7 | 48 | DA4 Bastión |
+| ODA5 | Antorcha del desierto | 5 | 33 | DA8 Torre Rota |
+| ODA6 | Hacha del desierto | 5 | 41 | DA9 Aguja de Piedra |
+| ODA7 | Espada del desierto | 2 | 15 | DA3 Oasis |
+
+</details>
+
+#### Región 4 · Cumbres de Ceniza
+
+![Cumbres de Ceniza](docs/mapa-cumbres-de-ceniza.png)
+
+Inicio: **CC1 Fogón** · Guarida: **CC11 Guarida de Ignea** · Jefe: Ignea, la madre de los dragones, pide **85** de poder · Energía inicial en el juego: 34
+
+<details><summary>Zonas, caminos y objetos</summary>
+
+| id | Zona | Tipo | Curación |
+|---|---|---|---|
+| CC1 | Fogón | Campamento |  |
+| CC2 | Templo Caído | Ruinas |  |
+| CC3 | Muralla Vieja | Ruinas |  |
+| CC4 | Monolito | Obelisco |  |
+| CC5 | Santuario de Ceniza | Santuario |  |
+| CC6 | Cráter Rojo | Volcán |  |
+| CC7 | Cantera | Minas |  |
+| CC8 | Termas | Fuente | 6 |
+| CC9 | Torre del Mago | Torre |  |
+| CC10 | Socavón | Minas |  |
+| CC11 | Guarida de Ignea | Guarida |  |
+
+| Camino | Costo |
+|---|---|
+| CC1 – CC2 (Fogón – Templo Caído) | 4 |
+| CC1 – CC3 (Fogón – Muralla Vieja) | 6 |
+| CC1 – CC4 (Fogón – Monolito) | 7 |
+| CC2 – CC4 (Templo Caído – Monolito) | 5 |
+| CC2 – CC5 (Templo Caído – Santuario de Ceniza) | 8 |
+| CC3 – CC4 (Muralla Vieja – Monolito) | 5 |
+| CC3 – CC6 (Muralla Vieja – Cráter Rojo) | 6 |
+| CC4 – CC5 (Monolito – Santuario de Ceniza) | 5 |
+| CC4 – CC6 (Monolito – Cráter Rojo) | 5 |
+| CC5 – CC6 (Santuario de Ceniza – Cráter Rojo) | 7 |
+| CC5 – CC8 (Santuario de Ceniza – Termas) | 6 |
+| CC6 – CC7 (Cráter Rojo – Cantera) | 4 |
+| CC7 – CC8 (Cantera – Termas) | 4 |
+| CC8 – CC9 (Termas – Torre del Mago) | 6 |
+| CC8 – CC11 (Termas – Guarida de Ignea) | 7 |
+| CC9 – CC11 (Torre del Mago – Guarida de Ignea) | 6 |
+| CC10 – CC11 (Socavón – Guarida de Ignea) | 4 |
+
+| id | Objeto | Peso (kg) | Poder | Zona |
+|---|---|---|---|---|
+| OCC1 | Poción ígnea | 7 | 48 | CC3 Muralla Vieja |
+| OCC2 | Antorcha ígnea | 4 | 46 | CC4 Monolito |
+| OCC3 | Hacha ígnea | 7 | 68 | CC2 Templo Caído |
+| OCC4 | Lanza ígnea | 1 | 11 | CC6 Cráter Rojo |
+| OCC5 | Arco ígneo | 4 | 26 | CC6 Cráter Rojo |
+| OCC6 | Mapa ígneo | 3 | 22 | CC9 Torre del Mago |
+| OCC7 | Gema ígnea | 7 | 47 | CC8 Termas |
+
+</details>
+
+## Uso de IA
+
+Usamos **Claude** (Anthropic) como asistente en estas tareas:
+
+- **Simulador del dominio.** Un integrante armó con Claude un juego web de Valdoria en JavaScript para validar que el dominio tuviera sentido y que cada algoritmo diera un resultado interesante. Después lo usamos para generar las cuatro regiones y dejarlas fijas. El simulador no forma parte de la entrega: los algoritmos del TPO se implementan en Java dentro de `algorithm/`.
+- **Verificación de datos.** Calculamos con código los resultados esperados de cada algoritmo sobre el reino, para tener una referencia contra la cual testear.
+
+Todas las decisiones de diseño fueron revisadas y aprobadas por el grupo, y cada integrante debe poder explicar cualquier parte del trabajo sin asistencia.
