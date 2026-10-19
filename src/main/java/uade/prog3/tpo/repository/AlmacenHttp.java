@@ -159,6 +159,13 @@ public class AlmacenHttp implements AlmacenNeo4j {
     }
 
     @Override
+    public void borrarTodo() {
+        // DETACH DELETE: borra los nodos junto con sus relaciones CONECTA.
+        cliente.ejecutar("MATCH (n) WHERE n:Nodo OR n:Item DETACH DELETE n", Map.of());
+        log.info("Borrados todos los nodos e items por HTTPS");
+    }
+
+    @Override
     public String descripcionDelTransporte() {
         return "Query API sobre HTTPS (" + cliente.endpoint() + ")";
     }

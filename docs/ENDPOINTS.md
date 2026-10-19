@@ -5,29 +5,100 @@
 
 ---
 
+### GET /api/grafo/resumen
+
+Cuántas zonas y caminos tiene el grafo cargado. Sirve para verificar que en
+Neo4j está Valdoria y no la semilla del scaffold.
+
+**Parámetros:** `dirigido` (opcional, por defecto `false`)
+
+**Ejemplo:** `GET /api/grafo/resumen`
+
+**Respuesta (recortada):**
+```json
+{"vertices": 38, "aristas": 57, "dirigido": false, "ids": ["VB1", "VB2", "...", "CC11"]}
+```
+`ids` trae las 38 zonas, en el orden en que las devuelve Neo4j.
+
+**Complejidad:** O(V + E) para pasar el grafo de Neo4j a memoria (más
+O(E log E) para dejar los vecinos ordenados por id).
+
+---
+
 ### GET /api/grafo/dfs
 
-Recorrido en profundidad desde un nodo.
+Recorrido en profundidad desde una zona: entra por el primer camino hacia una
+zona sin visitar y sigue hasta el fondo; cuando no hay más zonas nuevas,
+vuelve a la anterior y prueba el próximo camino.
 
-**Parámetros:** `origen` (id del nodo de partida)
+**Parámetros:** `origen` (id de la zona de partida, por ejemplo `VB1`)
 
-**Ejemplo:** `GET /api/grafo/dfs?origen=A`
+**Ejemplo:** `GET /api/grafo/dfs?origen=VB1`
 
 **Respuesta:**
 ```json
-["A", "B", "C", "D", "E", "F", "H", "G"]
+["VB1","VB2","VB3","VB4","VB5","VB6","VB7","VB8",
+ "CN1","CN3","CN2","CN5","CN6","CN4","CN7","CN9","CN8",
+ "DA1","DA2","DA4","DA5","DA3","DA6","DA7","DA10",
+ "CC1","CC2","CC4","CC3","CC6","CC5","CC8","CC11","CC10","CC9","CC7",
+ "DA8","DA9"]
 ```
+DA8 y DA9 aparecen al final: DFS llega hasta las Cumbres por DA10 y recién al
+volver encuentra esas dos zonas de las Dunas.
 
-**Complejidad:** O(V + E) — cada vértice se visita una vez y cada arista se
-recorre una vez, con lista de adyacencia.
+**Errores:** un `origen` que no existe devuelve `400 Bad Request`.
 
-**Estructura usada:** recursión (pila de llamadas) + arreglo de visitados.
+**Complejidad temporal:** O(V + E). Cada zona se visita una sola vez (queda
+marcada) y su lista de vecinos se recorre una vez, en la única llamada que la
+visita. La suma de los largos de las listas es 2E en un grafo no dirigido.
+
+**Complejidad espacial:** O(V): arreglo de visitados, lista resultado y pila de
+llamadas (en el peor caso, un camino de V zonas).
+
+**Estructura usada:** lista de adyacencia + recursión (pila de llamadas) +
+arreglo `boolean[]` de visitados indexado por vértice (marcar y consultar en O(1)).
 
 ---
 
 ### GET /api/grafo/bfs
 
-_(completar)_
+Recorrido en anchura desde una zona: primero todas las zonas a un camino del
+origen, después las que están a dos, y así.
+
+**Parámetros:** `origen` (id de la zona de partida, por ejemplo `VB1`)
+
+**Ejemplo:** `GET /api/grafo/bfs?origen=VB1`
+
+**Respuesta:**
+```json
+["VB1","VB2","VB3","VB4","VB5","VB6","VB7","VB8",
+ "CN1","CN3","CN2","CN4","CN5","CN6","CN8","CN7","CN9",
+ "DA1","DA2","DA3","DA4","DA5","DA7","DA6","DA10","DA8","DA9",
+ "CC1","CC2","CC3","CC4","CC5","CC6","CC8","CC7","CC11","CC9","CC10"]
+```
+
+**Errores:** un `origen` que no existe devuelve `400 Bad Request`.
+
+**Complejidad temporal:** O(V + E). Cada zona entra y sale de la cola una sola
+vez (O(1) con `ArrayDeque`) y, al salir, se recorre su lista de vecinos una vez.
+
+**Complejidad espacial:** O(V): arreglo de visitados, cola y lista resultado.
+
+**Estructura usada:** lista de adyacencia + cola FIFO (`ArrayDeque`) + arreglo
+`boolean[]` de visitados. Las zonas se marcan **al encolarlas**, no al
+sacarlas: así ninguna entra dos veces en la cola.
+
+**BFS no es camino mínimo en energía.** Da el camino con menos caminos
+recorridos, no el de menos energía: de DA4 a DA9 llega en 2 caminos
+(DA4–DA7–DA9, 13 puntos de energía), pero el más barato usa 3
+(DA4–DA5–DA6–DA9, 11 puntos). Ese lo encuentra Dijkstra.
+
+---
+
+**Orden de los vecinos.** Neo4j no garantiza en qué orden devuelve los nodos y
+las relaciones, así que al cargar el grafo las listas de vecinos se ordenan por
+id, como texto. Por eso los recorridos dan siempre el mismo resultado, y
+`CC10` va antes que `CC2`.
 
 ---
 
