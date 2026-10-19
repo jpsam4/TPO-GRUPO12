@@ -36,6 +36,12 @@ public interface AlmacenNeo4j {
 
     void guardarItems(List<Item> items);
 
+    /**
+     * Borra todos los nodos (con sus relaciones) y todos los items. Lo usa la
+     * carga inicial para reemplazar la semilla del scaffold por Valdoria.
+     */
+    void borrarTodo();
+
     /** Como se esta hablando con la base. Sale en el log y en /api/grafo/resumen. */
     String descripcionDelTransporte();
 }

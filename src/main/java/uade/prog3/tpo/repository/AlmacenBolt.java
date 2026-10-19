@@ -52,6 +52,13 @@ public class AlmacenBolt implements AlmacenNeo4j {
     }
 
     @Override
+    public void borrarTodo() {
+        // deleteAll de Spring Data Neo4j hace DETACH DELETE: se lleva las relaciones CONECTA.
+        nodoRepository.deleteAll();
+        itemRepository.deleteAll();
+    }
+
+    @Override
     public String descripcionDelTransporte() {
         return "Bolt (Spring Data Neo4j, puerto 7687)";
     }

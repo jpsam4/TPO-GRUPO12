@@ -20,10 +20,16 @@ import java.util.Map;
  *
  * Lo unico que hay que tocar para que un endpoint funcione es el metodo
  * del paquete algorithm. Los controllers NO deben contener logica algoritmica.
+ *
+ * Valdoria es un grafo NO dirigido: cada camino se guarda una vez en Neo4j y
+ * se recorre en los dos sentidos. Por eso los endpoints cargan el grafo con
+ * NO_DIRIGIDO, que agrega la arista inversa al pasarlo a memoria.
  */
 @RestController
 @RequestMapping("/api/grafo")
 public class GrafoController {
+
+    private static final boolean NO_DIRIGIDO = false;
 
     private final GrafoService grafoService;
     private final Recorridos recorridos;
@@ -45,7 +51,7 @@ public class GrafoController {
 
     /** Metadatos del grafo cargado. Sirve para verificar la conexion a la base. */
     @GetMapping("/resumen")
-    public Map<String, Object> resumen(@RequestParam(defaultValue = "true") boolean dirigido) {
+    public Map<String, Object> resumen(@RequestParam(defaultValue = "false") boolean dirigido) {
         Grafo g = grafoService.cargar(dirigido);
         return Map.of(
                 "vertices", g.cantidadVertices(),
@@ -54,46 +60,46 @@ public class GrafoController {
                 "ids", g.ids());
     }
 
-    /** GET /api/grafo/dfs?origen=A */
+    /** GET /api/grafo/dfs?origen=VB1 */
     @GetMapping("/dfs")
     public List<String> dfs(@RequestParam String origen) {
-        return recorridos.dfs(grafoService.cargar(true), origen);
+        return recorridos.dfs(grafoService.cargar(NO_DIRIGIDO), origen);
     }
 
-    /** GET /api/grafo/bfs?origen=A */
+    /** GET /api/grafo/bfs?origen=VB1 */
     @GetMapping("/bfs")
     public List<String> bfs(@RequestParam String origen) {
-        return recorridos.bfs(grafoService.cargar(true), origen);
+        return recorridos.bfs(grafoService.cargar(NO_DIRIGIDO), origen);
     }
 
     /** GET /api/grafo/dijkstra?origen=A&destino=H */
     @GetMapping("/dijkstra")
     public CaminosMinimos.Camino dijkstra(@RequestParam String origen, @RequestParam String destino) {
-        return caminosMinimos.dijkstra(grafoService.cargar(true), origen, destino);
+        return caminosMinimos.dijkstra(grafoService.cargar(NO_DIRIGIDO), origen, destino);
     }
 
     /** GET /api/grafo/floyd */
     @GetMapping("/floyd")
     public Map<String, Double> floyd() {
-        return caminosMinimos.floydWarshall(grafoService.cargar(true));
+        return caminosMinimos.floydWarshall(grafoService.cargar(NO_DIRIGIDO));
     }
 
     /** GET /api/grafo/ucs?origen=A&destino=H */
     @GetMapping("/ucs")
     public CaminosMinimos.Camino ucs(@RequestParam String origen, @RequestParam String destino) {
-        return caminosMinimos.ucs(grafoService.cargar(true), origen, destino);
+        return caminosMinimos.ucs(grafoService.cargar(NO_DIRIGIDO), origen, destino);
     }
 
     /** GET /api/grafo/prim?origen=A   (el MST exige grafo NO dirigido) */
     @GetMapping("/prim")
     public ArbolRecubrimiento.Mst prim(@RequestParam String origen) {
-        return arbolRecubrimiento.prim(grafoService.cargar(false), origen);
+        return arbolRecubrimiento.prim(grafoService.cargar(NO_DIRIGIDO), origen);
     }
 
     /** GET /api/grafo/kruskal */
     @GetMapping("/kruskal")
     public ArbolRecubrimiento.Mst kruskal() {
-        return arbolRecubrimiento.kruskal(grafoService.cargar(false));
+        return arbolRecubrimiento.kruskal(grafoService.cargar(NO_DIRIGIDO));
     }
 
     /** GET /api/grafo/rutas?origen=A&destino=H&costoMaximo=30&saltosMaximos=5 */
@@ -102,7 +108,7 @@ public class GrafoController {
                                          @RequestParam String destino,
                                          @RequestParam(defaultValue = "1000") double costoMaximo,
                                          @RequestParam(defaultValue = "10") int saltosMaximos) {
-        return backtracking.rutasSimples(grafoService.cargar(true), origen, destino,
+        return backtracking.rutasSimples(grafoService.cargar(NO_DIRIGIDO), origen, destino,
                 costoMaximo, saltosMaximos);
     }
 }

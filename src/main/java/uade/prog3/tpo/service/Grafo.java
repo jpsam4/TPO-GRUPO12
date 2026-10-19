@@ -70,6 +70,22 @@ public class Grafo {
         return dirigido;
     }
 
+    /**
+     * Deja la lista de vecinos de cada vertice ordenada por id (orden de texto:
+     * "CC10" va antes que "CC2").
+     *
+     * Neo4j no garantiza en que orden devuelve los nodos ni las relaciones, y
+     * BFS y DFS visitan los vecinos en el orden de la lista. Ordenarlas una vez
+     * al cargar hace que los recorridos den siempre el mismo resultado y se
+     * puedan verificar a mano. Es un paso de la carga, O(E log E), y no cambia
+     * la complejidad de los algoritmos, que despues recorren las listas tal cual.
+     */
+    public void ordenarVecinosPorId() {
+        for (List<Arista> vecinos : adyacencia) {
+            vecinos.sort((a, b) -> ids.get(a.destino()).compareTo(ids.get(b.destino())));
+        }
+    }
+
     /** Vecinos del vertice, en formato lista de adyacencia. */
     public List<Arista> vecinos(int vertice) {
         return Collections.unmodifiableList(adyacencia.get(vertice));

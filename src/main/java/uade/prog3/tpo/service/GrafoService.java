@@ -52,6 +52,9 @@ public class GrafoService {
             }
         }
 
+        // 3) vecinos en orden fijo, para que los recorridos sean reproducibles
+        grafo.ordenarVecinosPorId();
+
         log.info("Grafo cargado: {} vertices, {} aristas, dirigido={}",
                 grafo.cantidadVertices(), grafo.cantidadAristas(), dirigido);
         return grafo;
