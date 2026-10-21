@@ -5,14 +5,15 @@ GET http://localhost:8080/api/grafo/resumen
 GET http://localhost:8080/api/grafo/dfs?origen=VB1
 GET http://localhost:8080/api/grafo/bfs?origen=VB1
 
-### Caminos mínimos    (esperado: A->C = 7, A->H = 20)
-GET http://localhost:8080/api/grafo/dijkstra?origen=A&destino=C
-GET http://localhost:8080/api/grafo/dijkstra?origen=A&destino=H
+### Caminos mínimos    (esperado: VB1->VB8 = 20, DA4->DA9 = 11, VB1->CC11 = 103)
+GET http://localhost:8080/api/grafo/dijkstra?origen=VB1&destino=VB8
+GET http://localhost:8080/api/grafo/dijkstra?origen=DA4&destino=DA9
+GET http://localhost:8080/api/grafo/dijkstra?origen=VB1&destino=CC11
 GET http://localhost:8080/api/grafo/floyd
-GET http://localhost:8080/api/grafo/ucs?origen=A&destino=H
+GET http://localhost:8080/api/grafo/ucs?origen=VB1&destino=CC11
 
-### Arbol de recubrimiento minimo    (esperado: 7 aristas, costo total 27)
-GET http://localhost:8080/api/grafo/prim?origen=A
+### Arbol de recubrimiento minimo    (esperado: 37 aristas, costo total 161)
+GET http://localhost:8080/api/grafo/prim?origen=VB1
 GET http://localhost:8080/api/grafo/kruskal
 
 ### Ordenamiento
@@ -24,5 +25,5 @@ GET http://localhost:8080/api/seleccion/greedy?capacidad=10
 GET http://localhost:8080/api/seleccion/dinamica?capacidad=10
 
 ### Backtracking y Branch and Bound
-GET http://localhost:8080/api/grafo/rutas?origen=A&destino=H&costoMaximo=30&saltosMaximos=6
+GET http://localhost:8080/api/grafo/rutas?origen=VB1&destino=VB8&costoMaximo=30&saltosMaximos=6
 GET http://localhost:8080/api/seleccion/repartir?contenedores=3

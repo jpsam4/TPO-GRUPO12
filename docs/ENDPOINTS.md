@@ -104,19 +104,131 @@ id, como texto. Por eso los recorridos dan siempre el mismo resultado, y
 
 ### GET /api/grafo/dijkstra
 
-_(completar)_
+Camino de menor gasto de energía entre dos zonas del reino, con reconstrucción
+completa de la secuencia de zonas.
+
+**Parámetros:** `origen` (id de la zona de partida), `destino` (id de la zona de llegada)
+
+**Ejemplo 1 (Región 1 — Valle de Brezo, verificado a mano):**
+`GET /api/grafo/dijkstra?origen=VB1&destino=VB8`
+
+**Respuesta:**
+```json
+{
+  "vertices": ["VB1", "VB2", "VB3", "VB5", "VB6", "VB8"],
+  "costoTotal": 20.0
+}
+```
+Cálculo a mano sobre el Valle de Brezo: `VB1 -> VB2 (3) -> VB3 (+4 = 7) -> VB5 (+3 = 10) -> VB6 (+6 = 16) -> VB8 (+4 = 20)`.
+Al expandir `VB7` (distancia 15) primero se descubre `VB8` con costo `15 + 6 = 21` (`predecesor = VB7`), y luego al expandir `VB6` (distancia 16) se **relaja** la arista `VB6 -> VB8` bajando `dist[VB8]` a `16 + 4 = 20` (`predecesor = VB6`).
+
+**Ejemplo 2 (Reino completo — de la Aldea Brezo a la Guarida de Ignea):**
+`GET /api/grafo/dijkstra?origen=VB1&destino=CC11`
+
+**Respuesta:**
+```json
+{
+  "vertices": [
+    "VB1", "VB2", "VB3", "VB5", "VB6", "VB8",
+    "CN1", "CN3", "CN6", "CN7", "CN9",
+    "DA1", "DA3", "DA5", "DA6", "DA7", "DA10",
+    "CC1", "CC2", "CC5", "CC8", "CC11"
+  ],
+  "costoTotal": 103.0
+}
+```
+Cruza las 4 regiones pasando por 22 zonas: 20 en Valle de Brezo + 5 del paso + 23 en Ciénagas de Niebla + 5 del paso + 20 en Dunas de Ámbar + 5 del paso + 25 en Cumbres de Ceniza = **103 puntos de energía**.
+
+**Errores:** un `origen` o `destino` inexistente o un grafo con aristas de costo negativo devuelve `400 Bad Request`.
+
+**Complejidad temporal:** O((V + E) log V) con cola de prioridad basada en heap binario y lista de adyacencia. Cada zona se cierra a lo sumo una vez (O(V log V) en extracciones válidas) y cada camino se examina una vez por extremo, provocando a lo sumo una inserción en el heap de tamaño <= E (y como E <= V², log E = O(log V), sumando O(E log V) en relajaciones).
+
+**Complejidad espacial:** O(V + E): arreglos `dist[]`, `predecesor[]` y `visitado[]` de tamaño V, más la cola de prioridad con a lo sumo E entradas pendientes (borrado perezoso de entradas desplazadas por una relajación).
+
+**Estructura usada:** lista de adyacencia + `PriorityQueue` (heap binario) + arreglos `double[] dist`, `int[] predecesor` (para reconstruir el camino hacia atrás desde `destino` hasta `origen`) y `boolean[] visitado`.
+
+**Por qué es greedy y por qué falla con pesos negativos:** en cada paso cierra definitivamente la zona abierta `u` de menor `dist[u]` asumiendo que ningún rodeo por zonas aún abiertas puede mejorarla. Eso requiere que sumar nuevas aristas nunca disminuya el costo acumulado; si hubiera una arista negativa, un camino más caro ahora podría restar después y mejorar un vértice que Dijkstra ya cerró.
 
 ---
 
 ### GET /api/grafo/prim
 
-_(completar)_
+Árbol de recubrimiento mínimo (MST) del reino calculado con el algoritmo de Prim, haciendo crecer un único árbol desde la zona de origen y eligiendo en cada paso el camino más barato que cruza desde las zonas ya incorporadas hacia las que están afuera.
+
+**Parámetros:** `origen` (id de la zona desde donde arranca el árbol, por ejemplo `VB1`)
+
+**Ejemplo:** `GET /api/grafo/prim?origen=VB1`
+
+**Respuesta (recortada a las primeras y últimas aristas):**
+```json
+{
+  "aristas": [
+    {"origen": "VB1", "destino": "VB2", "costo": 3.0},
+    {"origen": "VB2", "destino": "VB3", "costo": 4.0},
+    {"origen": "VB3", "destino": "VB5", "costo": 3.0},
+    "... (37 aristas en total) ...",
+    {"origen": "CC9", "destino": "CC11", "costo": 6.0},
+    {"origen": "CC11", "destino": "CC10", "costo": 4.0}
+  ],
+  "costoTotal": 161.0
+}
+```
+El árbol tiene exactamente **37 caminos** (V − 1 con V = 38) y un costo total de **161 puntos de energía**.
+
+**Verificación a mano por regiones:** como las 4 regiones se unen únicamente por los 3 pasos puente de costo 5, el MST del reino es la suma de los MST de cada región más los 3 pasos:
+- **Valle de Brezo (8 zonas, 7 aristas):** `VB1-VB2 (3)`, `VB3-VB5 (3)`, `VB6-VB7 (3)`, `VB2-VB3 (4)`, `VB4-VB5 (4)`, `VB4-VB6 (4)`, `VB6-VB8 (4)` → **25**
+- **Ciénagas de Niebla (9 zonas, 8 aristas):** `CN2-CN3 (4)`, `CN6-CN7 (4)`, `CN1-CN3 (5)`, `CN3-CN4 (5)`, `CN4-CN6 (5)`, `CN5-CN6 (5)`, `CN8-CN9 (5)`, `CN7-CN9 (8)` → **41**
+- **Dunas de Ámbar (10 zonas, 9 aristas):** `DA4-DA5 (3)`, `DA5-DA6 (3)`, `DA6-DA7 (3)`, `DA7-DA8 (3)`, `DA1-DA3 (4)`, `DA2-DA4 (4)`, `DA3-DA5 (4)`, `DA7-DA9 (4)`, `DA9-DA10 (4)` → **32**
+- **Cumbres de Ceniza (11 zonas, 10 aristas):** `CC1-CC2 (4)`, `CC6-CC7 (4)`, `CC7-CC8 (4)`, `CC10-CC11 (4)`, `CC2-CC4 (5)`, `CC3-CC4 (5)`, `CC4-CC5 (5)`, `CC4-CC6 (5)`, `CC8-CC9 (6)`, `CC9-CC11 (6)` → **48**
+- **3 pasos entre regiones:** `VB8-CN1 (5)` + `CN9-DA1 (5)` + `DA10-CC1 (5)` → **15**
+- **Total:** `25 + 41 + 32 + 48 + 15 = 161.0`.
+
+**Errores:** un `origen` inexistente, un grafo dirigido o un grafo no conexo devuelve `400 Bad Request`.
+
+**Complejidad temporal:** O(E log V) sobre un grafo conexo (implementación con heap binario, elegida porque Valdoria es un grafo ralo con E = 57 y V = 38, donde O(E log V) hace menos trabajo que el O(V²) de la búsqueda lineal).
+
+**Complejidad espacial:** O(V + E) por los arreglos `key[]`, `parent[]`, `inMST[]` de tamaño V y la cola de prioridad.
+
+**Estructura usada:** lista de adyacencia + `PriorityQueue` (heap binario) + arreglos `double[] key` (menor arista hacia el árbol), `int[] parent` (vértice del árbol que logra ese mínimo) y `boolean[] inMST`.
 
 ---
 
 ### GET /api/grafo/kruskal
 
-_(completar)_
+Árbol de recubrimiento mínimo (MST) del reino calculado con el algoritmo de Kruskal: ordena todos los caminos de menor a mayor costo y los agrega en orden siempre que no formen ciclo, verificando con Union-Find si los dos extremos ya pertenecen a la misma componente conexa.
+
+**Parámetros:** ninguno
+
+**Ejemplo:** `GET /api/grafo/kruskal`
+
+**Respuesta (recortada):**
+```json
+{
+  "aristas": [
+    {"origen": "VB1", "destino": "VB2", "costo": 3.0},
+    {"origen": "VB3", "destino": "VB5", "costo": 3.0},
+    {"origen": "VB6", "destino": "VB7", "costo": 3.0},
+    {"origen": "DA4", "destino": "DA5", "costo": 3.0},
+    {"origen": "DA5", "destino": "DA6", "costo": 3.0},
+    {"origen": "DA6", "destino": "DA7", "costo": 3.0},
+    {"origen": "DA7", "destino": "DA8", "costo": 3.0},
+    "... (37 aristas en total, ordenadas por costo de 3.0 a 8.0) ...",
+    {"origen": "CN7", "destino": "CN9", "costo": 8.0}
+  ],
+  "costoTotal": 161.0
+}
+```
+Reúne las mismas **37 aristas** y el mismo **costo total 161.0** que Prim (y corta apenas llega a V − 1 aristas, sin evaluar `CN5-CN8` de costo 9).
+
+**Errores:** un grafo dirigido o no conexo devuelve `400 Bad Request`.
+
+**Complejidad temporal:** O(E log E) = O(E log V). Ordenar las E aristas con MergeSort propio cuesta O(E log E) y domina a las a lo sumo 2E consultas `find` y V − 1 uniones `union`, que con compresión de caminos y unión por rango cuestan O(E α(V)), prácticamente lineal.
+
+**Complejidad espacial:** O(V + E): arreglos `padre[]` y `rango[]` de tamaño V para el Union-Find, más el arreglo de E aristas y su auxiliar para el ordenamiento.
+
+**Estructura usada:** arreglo de aristas ordenado con MergeSort propio (sin `Collections.sort` ni `Arrays.sort`) + estructura **Union-Find** implementada a mano (`int[] padre` con compresión de caminos en `find` e `int[] rango` para unión por rango en `union`).
+
+**Prim vs Kruskal según la densidad:** Kruskal conviene en grafos ralos (E ~ V, como Valdoria) porque ordenar pocas aristas es muy liviano; Prim con búsqueda lineal O(V²) conviene en grafos densos (E ~ V²), donde evita el factor log V del heap y el costo O(V² log V) de ordenar todas las aristas.
 
 ---
 
