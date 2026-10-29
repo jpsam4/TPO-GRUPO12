@@ -348,13 +348,147 @@ sobre los endpoints HTTP).
 
 ### GET /api/seleccion/greedy
 
-_(completar — incluir un caso donde greedy NO dé el óptimo)_
+Llena la mochila del héroe eligiendo primero los objetos con mejor relación
+poder/peso.
+
+**Función objetivo:** **maximizar el poder total** (suma de `valor`) de los
+objetos elegidos, sin que la suma de sus pesos (kg) supere la capacidad. Cada
+objeto se lleva entero o no se lleva (mochila 0/1).
+
+**Parámetros:**
+- `capacidad`: kg que entran en la mochila.
+- `region` (opcional): `VB`, `CN`, `DA` o `CC`, para usar solo los objetos de
+  esa región. Sin `region`, usa los 25 objetos del reino.
+
+**Ejemplo:** `GET /api/seleccion/greedy?capacidad=10&region=VB`
+
+**Respuesta (recortada):**
+```json
+{
+  "elegidos": [
+    {"id":"OVB5","nombre":"Arco","peso":4.0,"valor":16.0,"nodoId":"VB2"},
+    {"id":"OVB2","nombre":"Hacha","peso":3.0,"valor":11.0,"nodoId":"VB1"},
+    {"id":"OVB4","nombre":"Gema","peso":1.0,"valor":3.0,"nodoId":"VB4"}
+  ],
+  "valorTotal": 30.0, "pesoTotal": 8.0, "tecnica": "greedy por ratio valor/peso"
+}
+```
+
+**Cómo decide:** ordena por ratio valor/peso de mayor a menor (con el MergeSort
+propio del Hito 2; a igual ratio, por id) y recorre la lista una vez: si el
+objeto entra en lo que queda, lo toma; si no, lo saltea y sigue. Nunca revisa
+una decisión ya tomada.
+
+**Errores:** `capacidad` negativa o `region` inexistente devuelven `400 Bad Request`.
+
+**Complejidad temporal:** O(n log n), dominada por el ordenamiento; la pasada
+que elige es O(n).
+
+**Complejidad espacial:** O(n): la copia ordenada y la lista de elegidos.
+
+**Estructura usada:** arreglo ordenado con MergeSort (estable) + una pasada lineal.
+
+#### Juego de datos donde greedy NO da el óptimo
+
+Los objetos del **Valle de Brezo** con la mochila de **10 kg** del juego:
+
+| Objeto | Peso (kg) | Poder | Ratio poder/peso |
+|---|---|---|---|
+| Arco | 4 | 16 | 4,00 |
+| Hacha | 3 | 11 | 3,67 |
+| Armadura | 6 | 19 | 3,17 |
+| Gema | 1 | 3 | 3,00 |
+| Mapa | 5 | 14 | 2,80 |
+
+- **Greedy:** toma Arco (4 kg) y Hacha (7 kg). La Armadura ya no entra (13 kg), toma la Gema (8 kg) y el Mapa tampoco entra. Total: **30 de poder, 8 kg** (sobran 2 kg).
+- **Óptimo (programación dinámica):** Armadura + Arco. Total: **35 de poder, 10 kg**.
+
+Greedy pierde porque llenar primero con lo de mejor ratio deja 2 kg sin usar,
+que la Armadura (peor ratio, pero más poder) hubiera aprovechado. Pasa en las
+cuatro regiones con 10 kg:
+
+| Región | Greedy | Óptimo |
+|---|---|---|
+| Valle de Brezo (`VB`) | 30 | 35 |
+| Ciénagas de Niebla (`CN`) | 56 | 61 |
+| Dunas de Ámbar (`DA`) | 69 | 75 |
+| Cumbres de Ceniza (`CC`) | 79 | 90 |
+
+También con el reino completo: con `capacidad=8`, greedy junta 75 de poder
+(Antorcha ígnea, Lanza ígnea, Espada del desierto y Gema) y el óptimo es 79
+(Hacha ígnea + Lanza ígnea).
 
 ---
 
 ### GET /api/seleccion/dinamica
 
-_(completar — incluir la tabla dp del ejemplo)_
+Mochila 0/1 con programación dinámica: da siempre el **óptimo** y dice qué
+objetos lo forman.
+
+**Parámetros:** `capacidad` (entero, kg) y `region` (opcional, igual que en greedy).
+
+**Ejemplo:** `GET /api/seleccion/dinamica?capacidad=10&region=VB`
+
+**Respuesta (recortada):**
+```json
+{
+  "elegidos": [
+    {"id":"OVB1","nombre":"Armadura","peso":6.0,"valor":19.0,"nodoId":"VB2"},
+    {"id":"OVB5","nombre":"Arco","peso":4.0,"valor":16.0,"nodoId":"VB2"}
+  ],
+  "valorTotal": 35.0, "pesoTotal": 10.0, "tecnica": "programacion dinamica (mochila 0/1)"
+}
+```
+
+**Recurrencia:** `dp[i][j]` es el máximo poder usando solo los primeros `i`
+objetos con capacidad `j`.
+
+```
+dp[0][j] = 0
+dp[i][j] = dp[i-1][j]                                   si peso_i > j
+dp[i][j] = max(dp[i-1][j], dp[i-1][j - peso_i] + valor_i)   si no
+```
+
+La tabla se llena de arriba hacia abajo (bottom-up) y la respuesta es `dp[n][W]`.
+
+**Tabla dp del ejemplo** (Valle de Brezo, capacidad 10):
+
+| Objetos considerados | j=0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 · ninguno | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 1 · Armadura (6 kg, 19) | 0 | 0 | 0 | 0 | 0 | 0 | 19 | 19 | 19 | 19 | 19 |
+| 2 · Hacha (3 kg, 11) | 0 | 0 | 0 | 11 | 11 | 11 | 19 | 19 | 19 | 30 | 30 |
+| 3 · Mapa (5 kg, 14) | 0 | 0 | 0 | 11 | 11 | 14 | 19 | 19 | 25 | 30 | 30 |
+| 4 · Gema (1 kg, 3) | 0 | 3 | 3 | 11 | 14 | 14 | 19 | 22 | 25 | 30 | 33 |
+| 5 · Arco (4 kg, 16) | 0 | 3 | 3 | 11 | 16 | 19 | 19 | 27 | 30 | 30 | **35** |
+
+**Recuperación del camino** (de abajo hacia arriba, desde `dp[5][10]`):
+- `dp[5][10]=35 ≠ dp[4][10]=33`: se lleva el **Arco**; quedan 10−4 = 6 kg.
+- `dp[4][6] = dp[3][6] = dp[2][6] = dp[1][6] = 19`: Gema, Mapa y Hacha no se llevan.
+- `dp[1][6]=19 ≠ dp[0][6]=0`: se lleva la **Armadura**; quedan 0 kg.
+
+Resultado: Armadura + Arco = 35 de poder, 10 kg.
+
+**Errores:** `capacidad` negativa, `region` inexistente o algún objeto con peso
+no entero devuelven `400 Bad Request` (el peso se usa como índice de columna).
+
+**Complejidad temporal:** O(n · W): cada una de las (n+1)·(W+1) celdas se
+calcula en O(1); la recuperación es O(n).
+
+**Complejidad espacial:** O(n · W) por la tabla completa, que hace falta para
+recuperar los objetos (si solo se quisiera el valor alcanzaría con una fila).
+
+**Es pseudopolinómica:** W es un *valor*, no un tamaño de entrada. Escribirlo
+ocupa log W bits, así que O(n · W) es exponencial en el tamaño de la entrada:
+duplicar la capacidad duplica el trabajo aunque la entrada casi no crezca.
+
+**Estructura usada:** matriz `double[n+1][W+1]`.
+
+**Tests:** `SeleccionTest` (9 casos: el ejemplo del Valle de Brezo, greedy
+pierde en las cuatro regiones, PD contra fuerza bruta en cada región para
+capacidades de 0 a 30, 200 casos al azar donde los objetos recuperados suman lo
+informado, greedy nunca supera al óptimo, casos vacíos, datos inválidos y
+entrada sin modificar) y `SeleccionControllerTest` (4 casos sobre los endpoints HTTP).
 
 ---
 
