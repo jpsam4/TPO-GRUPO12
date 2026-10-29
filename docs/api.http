@@ -31,6 +31,10 @@ GET http://localhost:8080/api/seleccion/mergesort?criterio=peso
 GET http://localhost:8080/api/seleccion/greedy?capacidad=10&region=VB
 GET http://localhost:8080/api/seleccion/dinamica?capacidad=10&region=VB
 
-### Backtracking y Branch and Bound
-GET http://localhost:8080/api/grafo/rutas?origen=VB1&destino=VB8&costoMaximo=30&saltosMaximos=6
+### Backtracking    (esperado en Valle de Brezo con costo 22 y 5 saltos: 3 rutas, 19 nodos con poda vs 37 sin poda)
+GET http://localhost:8080/api/grafo/rutas?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=5
+GET http://localhost:8080/api/grafo/rutas/comparacion?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=5
+GET http://localhost:8080/api/grafo/rutas/comparacion?origen=VB1&destino=CC11&costoMaximo=105&saltosMaximos=22
+
+### Branch and Bound
 GET http://localhost:8080/api/seleccion/repartir?contenedores=3

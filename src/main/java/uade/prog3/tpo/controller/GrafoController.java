@@ -72,7 +72,7 @@ public class GrafoController {
         return recorridos.bfs(grafoService.cargar(NO_DIRIGIDO), origen);
     }
 
-    /** GET /api/grafo/dijkstra?origen=A&destino=H */
+    /** GET /api/grafo/dijkstra?origen=VB1&destino=CC11 */
     @GetMapping("/dijkstra")
     public CaminosMinimos.Camino dijkstra(@RequestParam String origen, @RequestParam String destino) {
         return caminosMinimos.dijkstra(grafoService.cargar(NO_DIRIGIDO), origen, destino);
@@ -100,13 +100,13 @@ public class GrafoController {
         return caminosMinimos.compararFloydConDijkstra(grafoService.cargar(NO_DIRIGIDO));
     }
 
-    /** GET /api/grafo/ucs?origen=A&destino=H */
+    /** GET /api/grafo/ucs?origen=VB1&destino=CC11 */
     @GetMapping("/ucs")
     public CaminosMinimos.Camino ucs(@RequestParam String origen, @RequestParam String destino) {
         return caminosMinimos.ucs(grafoService.cargar(NO_DIRIGIDO), origen, destino);
     }
 
-    /** GET /api/grafo/prim?origen=A   (el MST exige grafo NO dirigido) */
+    /** GET /api/grafo/prim?origen=VB1   (el MST exige grafo NO dirigido) */
     @GetMapping("/prim")
     public ArbolRecubrimiento.Mst prim(@RequestParam String origen) {
         return arbolRecubrimiento.prim(grafoService.cargar(NO_DIRIGIDO), origen);
@@ -118,13 +118,23 @@ public class GrafoController {
         return arbolRecubrimiento.kruskal(grafoService.cargar(NO_DIRIGIDO));
     }
 
-    /** GET /api/grafo/rutas?origen=A&destino=H&costoMaximo=30&saltosMaximos=5 */
+    /** GET /api/grafo/rutas?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=6 */
     @GetMapping("/rutas")
     public List<Backtracking.Ruta> rutas(@RequestParam String origen,
                                          @RequestParam String destino,
                                          @RequestParam(defaultValue = "1000") double costoMaximo,
                                          @RequestParam(defaultValue = "10") int saltosMaximos) {
         return backtracking.rutasSimples(grafoService.cargar(NO_DIRIGIDO), origen, destino,
+                costoMaximo, saltosMaximos);
+    }
+
+    /** GET /api/grafo/rutas/comparacion?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=6 */
+    @GetMapping("/rutas/comparacion")
+    public Backtracking.ComparacionPoda rutasComparacion(@RequestParam String origen,
+                                                         @RequestParam String destino,
+                                                         @RequestParam(defaultValue = "1000") double costoMaximo,
+                                                         @RequestParam(defaultValue = "10") int saltosMaximos) {
+        return backtracking.compararConYSinPoda(grafoService.cargar(NO_DIRIGIDO), origen, destino,
                 costoMaximo, saltosMaximos);
     }
 }
