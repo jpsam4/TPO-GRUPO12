@@ -59,4 +59,44 @@ public class GrafoService {
                 grafo.cantidadVertices(), grafo.cantidadAristas(), dirigido);
         return grafo;
     }
+
+    /**
+     * Grafo de COSTO NETO, para Floyd-Warshall: recorrer el camino u -> v
+     * cuesta su energia menos lo que cura la zona v al llegar (Nodo.valor;
+     * las fuentes curan 6). Ejemplo: de la Aldea Brezo a la Fuente Clara el
+     * camino cuesta 3, pero la fuente cura 6, asi que el neto es 3 - 6 = -3.
+     *
+     * El grafo queda DIRIGIDO aunque los caminos sean de ida y vuelta, porque
+     * el neto depende de hacia donde se va: VB1 -> VB2 cuesta -3 y VB2 -> VB1
+     * cuesta 3. Por eso cada camino se carga como dos aristas.
+     *
+     * @param curacionFuentes si no es null, reemplaza lo que cura cada zona que
+     *                        cura algo. Sirve para mostrar un ciclo negativo:
+     *                        con 7, ir y volver entre VB1 y VB2 cuesta 3-7 + 3 = -1.
+     */
+    public Grafo cargarConCuracion(Double curacionFuentes) {
+        Grafo grafo = new Grafo(true);
+        List<Nodo> nodos = almacen.todosLosNodos();
+        for (Nodo n : nodos) {
+            grafo.agregarVertice(n.getId());
+        }
+        for (Nodo n : nodos) {
+            for (Conexion c : n.getConexiones()) {
+                Nodo d = c.getDestino();
+                grafo.agregarArista(n.getId(), d.getId(), c.getCosto() - curacion(d, curacionFuentes));
+                grafo.agregarArista(d.getId(), n.getId(), c.getCosto() - curacion(n, curacionFuentes));
+            }
+        }
+        grafo.ordenarVecinosPorId();
+        log.info("Grafo de costo neto cargado: {} vertices, {} aristas dirigidas",
+                grafo.cantidadVertices(), grafo.cantidadAristas());
+        return grafo;
+    }
+
+    private static double curacion(Nodo n, Double curacionFuentes) {
+        if (curacionFuentes != null && n.getValor() > 0) {
+            return curacionFuentes;
+        }
+        return n.getValor();
+    }
 }

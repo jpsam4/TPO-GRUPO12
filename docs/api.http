@@ -9,7 +9,14 @@ GET http://localhost:8080/api/grafo/bfs?origen=VB1
 GET http://localhost:8080/api/grafo/dijkstra?origen=VB1&destino=VB8
 GET http://localhost:8080/api/grafo/dijkstra?origen=DA4&destino=DA9
 GET http://localhost:8080/api/grafo/dijkstra?origen=VB1&destino=CC11
+
+### Floyd-Warshall con costo neto    (esperado: VB1->CC11 = 79; con curacion=7 responde 422 por el ciclo VB2->VB1->VB2)
 GET http://localhost:8080/api/grafo/floyd
+GET http://localhost:8080/api/grafo/floyd/camino?origen=VB1&destino=CC11
+GET http://localhost:8080/api/grafo/floyd?curacion=7
+GET http://localhost:8080/api/grafo/floyd/comparacion
+
+### UCS
 GET http://localhost:8080/api/grafo/ucs?origen=VB1&destino=CC11
 
 ### Arbol de recubrimiento minimo    (esperado: 37 aristas, costo total 161)
