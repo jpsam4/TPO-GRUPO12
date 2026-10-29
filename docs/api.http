@@ -20,9 +20,9 @@ GET http://localhost:8080/api/grafo/kruskal
 GET http://localhost:8080/api/seleccion/quicksort?criterio=ratio
 GET http://localhost:8080/api/seleccion/mergesort?criterio=peso
 
-### Seleccion    (comparar: greedy no deberia igualar a dinamica)
-GET http://localhost:8080/api/seleccion/greedy?capacidad=10
-GET http://localhost:8080/api/seleccion/dinamica?capacidad=10
+### Seleccion    (esperado en el Valle de Brezo: greedy 30, dinamica 35)
+GET http://localhost:8080/api/seleccion/greedy?capacidad=10&region=VB
+GET http://localhost:8080/api/seleccion/dinamica?capacidad=10&region=VB
 
 ### Backtracking y Branch and Bound
 GET http://localhost:8080/api/grafo/rutas?origen=VB1&destino=VB8&costoMaximo=30&saltosMaximos=6

@@ -7,8 +7,10 @@ import uade.prog3.tpo.algorithm.Seleccion;
 import uade.prog3.tpo.model.Item;
 import uade.prog3.tpo.repository.AlmacenNeo4j;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Endpoints de seleccion, ordenamiento y reparto.
@@ -33,20 +35,46 @@ public class SeleccionController {
         this.ramificacionYPoda = ramificacionYPoda;
     }
 
+    private static final Set<String> REGIONES = Set.of("VB", "CN", "DA", "CC");
+
     private List<Item> todos() {
         return almacen.todosLosItems();
     }
 
-    /** GET /api/seleccion/greedy?capacidad=10 */
-    @GetMapping("/greedy")
-    public Seleccion.Resultado greedy(@RequestParam double capacidad) {
-        return seleccion.greedy(todos(), capacidad);
+    /**
+     * Los objetos de una region (VB, CN, DA o CC), o todos los del reino si
+     * no se indica. Es solo un filtro de datos: el algoritmo no cambia.
+     */
+    private List<Item> deLaRegion(String region) {
+        List<Item> items = todos();
+        if (region == null || region.isBlank()) {
+            return items;
+        }
+        String codigo = region.trim().toUpperCase();
+        if (!REGIONES.contains(codigo)) {
+            throw new IllegalArgumentException("Region invalida: " + region + ". Use VB, CN, DA o CC.");
+        }
+        List<Item> filtrados = new ArrayList<>();
+        for (Item i : items) {
+            if (i.getNodoId() != null && i.getNodoId().startsWith(codigo)) {
+                filtrados.add(i);
+            }
+        }
+        return filtrados;
     }
 
-    /** GET /api/seleccion/dinamica?capacidad=10 */
+    /** GET /api/seleccion/greedy?capacidad=10&region=VB   (region es opcional) */
+    @GetMapping("/greedy")
+    public Seleccion.Resultado greedy(@RequestParam double capacidad,
+                                      @RequestParam(required = false) String region) {
+        return seleccion.greedy(deLaRegion(region), capacidad);
+    }
+
+    /** GET /api/seleccion/dinamica?capacidad=10&region=VB   (region es opcional) */
     @GetMapping("/dinamica")
-    public Seleccion.Resultado dinamica(@RequestParam int capacidad) {
-        return seleccion.programacionDinamica(todos(), capacidad);
+    public Seleccion.Resultado dinamica(@RequestParam int capacidad,
+                                        @RequestParam(required = false) String region) {
+        return seleccion.programacionDinamica(deLaRegion(region), capacidad);
     }
 
     /**
