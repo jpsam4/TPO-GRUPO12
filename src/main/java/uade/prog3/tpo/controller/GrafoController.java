@@ -78,10 +78,26 @@ public class GrafoController {
         return caminosMinimos.dijkstra(grafoService.cargar(NO_DIRIGIDO), origen, destino);
     }
 
-    /** GET /api/grafo/floyd */
+    /**
+     * GET /api/grafo/floyd   (costo neto de todos los pares: energia menos curacion)
+     * curacion es opcional: reemplaza lo que curan las fuentes (con 7 aparece un ciclo negativo).
+     */
     @GetMapping("/floyd")
-    public Map<String, Double> floyd() {
-        return caminosMinimos.floydWarshall(grafoService.cargar(NO_DIRIGIDO));
+    public Map<String, Double> floyd(@RequestParam(required = false) Double curacion) {
+        return caminosMinimos.floydWarshall(grafoService.cargarConCuracion(curacion));
+    }
+
+    /** GET /api/grafo/floyd/camino?origen=VB1&destino=CC11   (costo neto, camino reconstruido) */
+    @GetMapping("/floyd/camino")
+    public CaminosMinimos.Camino floydCamino(@RequestParam String origen, @RequestParam String destino,
+                                             @RequestParam(required = false) Double curacion) {
+        return caminosMinimos.caminoFloyd(grafoService.cargarConCuracion(curacion), origen, destino);
+    }
+
+    /** GET /api/grafo/floyd/comparacion   (Floyd contra Dijkstra V veces, sobre la energia sin curacion) */
+    @GetMapping("/floyd/comparacion")
+    public CaminosMinimos.Comparacion floydComparacion() {
+        return caminosMinimos.compararFloydConDijkstra(grafoService.cargar(NO_DIRIGIDO));
     }
 
     /** GET /api/grafo/ucs?origen=A&destino=H */

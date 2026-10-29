@@ -151,6 +151,129 @@ Cruza las 4 regiones pasando por 22 zonas: 20 en Valle de Brezo + 5 del paso + 2
 
 ---
 
+### GET /api/grafo/floyd
+
+Costo mínimo entre **todos los pares** de zonas con Floyd-Warshall, usando el
+**costo neto**: la energía del camino menos lo que cura la zona a la que se
+llega (cada fuente cura 6).
+
+**Por qué costo neto:** es lo que de verdad le cuesta al personaje moverse, y
+es lo que hace aparecer **costos negativos**, que Dijkstra no admite y Floyd
+sí. Ir de la Aldea Brezo (VB1) a la Fuente Clara (VB2) gasta 3 pero cura 6, así
+que el neto es **−3**. Volver de VB2 a VB1 cuesta **3**: el grafo neto queda
+**dirigido** (57 caminos → 114 aristas), porque el neto depende de hacia dónde
+se va.
+
+**Parámetros:** `curacion` (opcional): reemplaza lo que curan las fuentes. Sirve
+para mostrar la detección de ciclos negativos.
+
+**Ejemplo:** `GET /api/grafo/floyd`
+
+**Respuesta (recortada; son 38 × 38 = 1.444 pares):**
+```json
+{"VB1->VB1": 0.0, "VB1->VB2": -3.0, "VB2->VB1": 3.0, "VB1->CC11": 79.0, "...": "..."}
+```
+
+**Recurrencia:** después de la vuelta `k`, `dist[i][j]` es el costo mínimo de
+`i` a `j` usando como intermedios solo los vértices `0..k`:
+
+```
+dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])
+```
+
+El bucle de `k` va **por fuera** de los de `i` y `j`: al usar `k` como
+intermedio, `dist[i][k]` y `dist[k][j]` ya tienen que estar resueltos con los
+intermedios anteriores. Junto con `dist` se mantiene `siguiente[i][j]` (el
+primer paso del camino de `i` a `j`) para poder reconstruir el camino.
+
+**Detección de ciclos negativos:** al terminar se revisa la diagonal. Si algún
+`dist[v][v] < 0`, desde `v` se puede salir y volver gastando energía negativa:
+hay un ciclo negativo y no existe camino mínimo (dar vueltas lo abarata sin
+límite). En ese caso el endpoint responde **`422`** con el ciclo encontrado
+(se obtiene siguiendo `siguiente[][]` desde `v` hasta que se repite un vértice).
+
+- **Datos reales:** no hay ciclos negativos. El peor caso es ir y volver entre
+  VB1 y la Fuente Clara: −3 + 3 = 0.
+- **Con `curacion=7`:** `GET /api/grafo/floyd?curacion=7` responde `422`:
+  ```json
+  {"estado":"ERROR","detalle":"Hay un ciclo de costo negativo: VB2 -> VB1 -> VB2. Dando vueltas la energia baja sin limite, asi que no existe camino minimo."}
+  ```
+  Ir a VB1 cuesta 3 y volver a la fuente, 3 − 7 = −4: cada vuelta resta 1.
+
+**Complejidad temporal:** O(V³): tres bucles anidados de V vueltas con trabajo
+O(1) adentro. En Valdoria son exactamente 38³ = **54.872** ternas `(k, i, j)`.
+No depende de la cantidad de aristas.
+
+**Complejidad espacial:** O(V²): las matrices `dist` y `siguiente`.
+
+**Estructura usada:** matriz de adyacencia `double[V][V]` (de
+`Grafo.matrizDeAdyacencia()`) + matriz `int[V][V]` de siguientes.
+
+---
+
+### GET /api/grafo/floyd/camino
+
+El camino mínimo (costo neto) entre dos zonas, reconstruido con la matriz
+`siguiente[][]` de Floyd.
+
+**Parámetros:** `origen`, `destino` y `curacion` (opcional).
+
+**Ejemplo:** `GET /api/grafo/floyd/camino?origen=VB1&destino=CC11`
+
+**Respuesta:**
+```json
+{"vertices":["VB1","VB2","VB3","VB5","VB6","VB8","CN1","CN3","CN6","CN7","CN9",
+             "DA1","DA3","DA5","DA6","DA7","DA10","CC1","CC2","CC5","CC8","CC11"],
+ "costoTotal":79.0}
+```
+Es el mismo recorrido que da Dijkstra con energía pura (103), pero cuesta
+**79**: pasa por las 4 fuentes y cada una devuelve 6 (103 − 4 × 6 = 79).
+
+**Reconstrucción:** se arranca en el origen y se salta a
+`siguiente[actual][destino]` hasta llegar. O(V) después de correr Floyd.
+
+**Errores:** zona inexistente → `400`; ciclo negativo → `422`.
+
+---
+
+### GET /api/grafo/floyd/comparacion
+
+Floyd-Warshall contra correr **Dijkstra desde cada una de las V zonas**, sobre
+el mismo grafo. Se hace con la energía pura (sin curación), porque Dijkstra no
+admite costos negativos.
+
+**Ejemplo:** `GET /api/grafo/floyd/comparacion`
+
+**Respuesta:**
+```json
+{"vertices":38, "aristas":57,
+ "floydComparaciones":54872, "floydMejoras":1366,
+ "dijkstraNodosExpandidos":1444, "dijkstraExtracciones":1509, "dijkstraRelajaciones":1471,
+ "mismasDistancias":true}
+```
+
+| | Floyd-Warshall | Dijkstra × V (heap binario) |
+|---|---|---|
+| Complejidad | O(V³) | O(V · (V + E) log V) |
+| Trabajo en Valdoria | 54.872 ternas evaluadas | 1.444 nodos expandidos (38 por corrida), 1.509 extracciones del heap, 1.471 relajaciones |
+| Costos negativos | Sí (y detecta ciclos negativos) | No |
+| Resultado | Las 1.444 distancias | Las mismas 1.444 (`mismasDistancias: true`) |
+
+**Conclusión:** Valdoria es un grafo **ralo** (E = 57, muy lejos del máximo
+V(V−1)/2 = 703). Ahí Dijkstra V veces hace mucho menos trabajo: unas 3.000
+operaciones de heap contra 54.872 ternas de Floyd. Floyd conviene cuando el
+grafo es **denso** (E ≈ V², donde V · (V + E) log V supera a V³), cuando hay
+**costos negativos** (el costo neto con las fuentes) o cuando hacen falta todos
+los pares con un código simple de tres bucles.
+
+**Tests:** `FloydTest` (11 casos: grafo chico con arista negativa calculado a
+mano, reconstrucción del camino, detección de un ciclo negativo, V³ ternas,
+VB1→CC11 = 103 con energía y 79 con costo neto, VB1→VB2 = −3, sin ciclos con
+los datos reales, ciclo VB2→VB1→VB2 con curación 7, y Floyd igual a Dijkstra
+par por par).
+
+---
+
 ### GET /api/grafo/prim
 
 Árbol de recubrimiento mínimo (MST) del reino calculado con el algoritmo de Prim, haciendo crecer un único árbol desde la zona de origen y eligiendo en cada paso el camino más barato que cruza desde las zonas ya incorporadas hacia las que están afuera.
