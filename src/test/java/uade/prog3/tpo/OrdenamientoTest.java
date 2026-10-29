@@ -214,6 +214,31 @@ class OrdenamientoTest {
         assertTrue(estaOrdenada(ordenamiento.mergeSort(descendente, POR_PESO), POR_PESO));
     }
 
+    @Test
+    @DisplayName("Sobre los 25 objetos de Valdoria ordena por ratio y peso, y MergeSort conserva el orden en empates")
+    void objetosDeValdoria() {
+        List<Item> valdoria = uade.prog3.tpo.seed.DatosValdoria.items();
+
+        List<Item> porRatio = ordenamiento.quickSort(valdoria, POR_RATIO);
+        assertEquals(25, porRatio.size());
+        assertTrue(estaOrdenada(porRatio, POR_RATIO));
+        assertTrue(esPermutacion(valdoria, porRatio));
+        assertEquals("OVB3", porRatio.get(0).getId());    // Mapa: 14 / 5 = 2.80
+        assertEquals("OVB4", porRatio.get(1).getId());    // Gema:  3 / 1 = 3.00
+        assertEquals("OCC4", porRatio.get(23).getId());   // Lanza ignea: 11 / 1 = 11.00
+        assertEquals("OCC2", porRatio.get(24).getId());   // Antorcha ignea: 46 / 4 = 11.50
+
+        List<Item> porPeso = ordenamiento.mergeSort(valdoria, POR_PESO);
+        assertEquals(25, porPeso.size());
+        assertTrue(estaOrdenada(porPeso, POR_PESO));
+        // Empate en 1 kg: OVB4 (Gema) viene antes que OCC4 (Lanza ignea) en DatosValdoria.
+        assertEquals("OVB4", porPeso.get(0).getId());
+        assertEquals("OCC4", porPeso.get(1).getId());
+        // Empate en 7 kg (los 5 mas pesados): respeta el orden de carga OCN1, ODA4, OCC1, OCC3, OCC7.
+        assertEquals(List.of("OCN1", "ODA4", "OCC1", "OCC3", "OCC7"),
+                ids(porPeso.subList(20, 25)));
+    }
+
     // ------------------------------------------------------------------
     // Verificadores
     // ------------------------------------------------------------------

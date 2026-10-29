@@ -20,14 +20,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Verifica que los endpoints de greedy y mochila 0/1 esten cableados al
- * algoritmo real, con el filtro opcional por region.
+ * Verifica que los endpoints de SeleccionController (ordenamiento, greedy,
+ * mochila 0/1 y manejo de errores / pendientes) esten cableados a los beans
+ * reales sobre los 25 objetos de Valdoria.
  *
- * Test de slice web: no se conecta a Neo4j; el almacen esta mockeado y
- * devuelve los objetos de Valdoria.
+ * Test de slice web: no se conecta a Neo4j; el almacen esta mockeado.
  */
 @WebMvcTest(SeleccionController.class)
-@Import({Ordenamiento.class, Seleccion.class})
+@Import({Ordenamiento.class, Seleccion.class, RamificacionYPoda.class})
 class SeleccionControllerTest {
 
     @Autowired
@@ -36,13 +36,26 @@ class SeleccionControllerTest {
     @MockitoBean
     private AlmacenNeo4j almacen;
 
-    // El controller lo pide por constructor, pero estos endpoints no lo usan.
-    @MockitoBean
-    private RamificacionYPoda ramificacionYPoda;
-
     @BeforeEach
     void conLosObjetosDeValdoria() {
         when(almacen.todosLosItems()).thenReturn(DatosValdoria.items());
+    }
+
+    @Test
+    @DisplayName("GET /api/seleccion/quicksort y /mergesort ordenan los 25 objetos de Valdoria")
+    void ordenamientoSobreValdoria() throws Exception {
+        mockMvc.perform(get("/api/seleccion/quicksort").param("criterio", "ratio"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(25))
+                .andExpect(jsonPath("$[0].id").value("OVB3"))
+                .andExpect(jsonPath("$[24].id").value("OCC2"));
+
+        mockMvc.perform(get("/api/seleccion/mergesort").param("criterio", "peso"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(25))
+                .andExpect(jsonPath("$[0].id").value("OVB4"))
+                .andExpect(jsonPath("$[1].id").value("OCC4"))
+                .andExpect(jsonPath("$[24].id").value("OCC7"));
     }
 
     @Test
@@ -76,11 +89,27 @@ class SeleccionControllerTest {
     }
 
     @Test
-    @DisplayName("Una region que no existe o una capacidad negativa devuelven 400")
+    @DisplayName("Una region inexistente, capacidad negativa o parametro faltante devuelven 400 JSON")
     void datosInvalidosDevuelven400() throws Exception {
         mockMvc.perform(get("/api/seleccion/greedy").param("capacidad", "10").param("region", "XX"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.estado").value("ERROR"));
         mockMvc.perform(get("/api/seleccion/dinamica").param("capacidad", "-1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.estado").value("ERROR"));
+        mockMvc.perform(get("/api/seleccion/dinamica"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.estado").value("ERROR"));
+        mockMvc.perform(get("/api/seleccion/repartir").param("contenedores", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.estado").value("ERROR"));
+    }
+
+    @Test
+    @DisplayName("Endpoint pendiente (/repartir, Hito 11) responde 501 JSON limpio, no stack trace")
+    void repartirPendienteDevuelve501() throws Exception {
+        mockMvc.perform(get("/api/seleccion/repartir").param("contenedores", "3"))
+                .andExpect(status().isNotImplemented())
+                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
     }
 }

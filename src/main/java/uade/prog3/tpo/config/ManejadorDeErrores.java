@@ -2,18 +2,21 @@ package uade.prog3.tpo.config;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import uade.prog3.tpo.algorithm.PendienteDeImplementar;
 
 import java.util.Map;
 
 /**
- * Traduce excepciones a respuestas HTTP con un cuerpo entendible.
+ * Traduce excepciones a respuestas HTTP con un cuerpo entendible y sin stack traces.
  *
- * Lo importante para el trabajo: un algoritmo sin implementar devuelve
- * 501 Not Implemented con un mensaje claro, en vez de un stack trace de 500.
- * Asi la aplicacion arranca y es demostrable desde el primer dia.
+ *   - PendienteDeImplementar                  -> 501 Not Implemented
+ *   - IllegalArgumentException                -> 400 Bad Request
+ *   - Parametro faltante o de tipo invalido   -> 400 Bad Request
+ *   - IllegalStateException (ciclo negativo)  -> 422 Unprocessable Entity
  */
 @RestControllerAdvice
 public class ManejadorDeErrores {
@@ -28,6 +31,18 @@ public class ManejadorDeErrores {
     public ResponseEntity<Map<String, String>> datosInvalidos(IllegalArgumentException e) {
         return ResponseEntity.badRequest()
                 .body(Map.of("estado", "ERROR", "detalle", e.getMessage()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, String>> parametroFaltante(MissingServletRequestParameterException e) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("estado", "ERROR", "detalle", "Falta el parametro requerido: " + e.getParameterName()));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, String>> tipoDeParametroInvalido(MethodArgumentTypeMismatchException e) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("estado", "ERROR", "detalle", "Valor invalido para el parametro '" + e.getName() + "': " + e.getValue()));
     }
 
     @ExceptionHandler(IllegalStateException.class)
