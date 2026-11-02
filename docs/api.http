@@ -36,5 +36,5 @@ GET http://localhost:8080/api/grafo/rutas?origen=VB1&destino=VB8&costoMaximo=22&
 GET http://localhost:8080/api/grafo/rutas/comparacion?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=5
 GET http://localhost:8080/api/grafo/rutas/comparacion?origen=VB1&destino=CC11&costoMaximo=105&saltosMaximos=22
 
-### Branch and Bound
+### Branch and Bound    (esperado: 36 kg por personaje, 546 nodos explorados, 760 podados)
 GET http://localhost:8080/api/seleccion/repartir?contenedores=3

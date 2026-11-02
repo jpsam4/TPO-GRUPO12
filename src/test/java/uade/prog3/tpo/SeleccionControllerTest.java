@@ -106,10 +106,14 @@ class SeleccionControllerTest {
     }
 
     @Test
-    @DisplayName("Endpoint pendiente (/repartir, Hito 11) responde 501 JSON limpio, no stack trace")
-    void repartirPendienteDevuelve501() throws Exception {
+    @DisplayName("GET /api/seleccion/repartir?contenedores=3 reparte los 108 kg en 36 kg por personaje (Hito 11)")
+    void repartirTresPersonajes() throws Exception {
         mockMvc.perform(get("/api/seleccion/repartir").param("contenedores", "3"))
-                .andExpect(status().isNotImplemented())
-                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cargaMaxima").value(36.0))
+                .andExpect(jsonPath("$.cota").value(36.0))
+                .andExpect(jsonPath("$.cargas.length()").value(3))
+                .andExpect(jsonPath("$.nodosExplorados").value(546))
+                .andExpect(jsonPath("$.nodosPodados").value(760));
     }
 }
