@@ -31,7 +31,7 @@ stack traces. Todos los errores responden JSON `{"estado": "...", "detalle": "..
 | `GET /api/seleccion/dinamica` | 6 | Mochila 0/1 (Prog. Dinámica) | O(n · W) | O(n · W) |
 | `GET /api/grafo/rutas` | 8 | Backtracking con poda de viabilidad | O(b^d) / O(V!) peor caso | O(V) |
 | `GET /api/grafo/rutas/comparacion` | 8 | Backtracking con poda vs. sin poda | O(V!) peor caso | O(V) |
-| `GET /api/seleccion/repartir` | 11 | Branch & Bound *(pendiente Hito 11)* | — (`501`) | — |
+| `GET /api/seleccion/repartir` | 11 | Branch & Bound de reparto (makespan) | O(kⁿ) peor caso, poda por cota | O(n + k) |
 | `GET /api/grafo/ucs` | Opc. | Uniform Cost Search *(opcional)* | — (`501`) | — |
 
 ---
@@ -804,7 +804,93 @@ Ejecuta la misma consulta de caminos simples **con poda** y **sin poda** (fuerza
 
 ---
 
-### Endpoints pendientes de hitos posteriores u opcionales
+### GET /api/seleccion/repartir
 
-- **`GET /api/seleccion/repartir?contenedores=3` (Hito 11 — Branch & Bound):** actualmente responde `501 Not Implemented` (`{"estado":"PENDIENTE","detalle":"Algoritmo aun no implementado: Branch and Bound de reparto"}`). Si `contenedores < 1` responde `400 Bad Request`. Se completa en el Hito 11 explicitando la cota optimista y los nodos podados.
+Reparte el botín (los objetos) entre `k` personajes de forma que **el que más
+carga, cargue lo menos posible** (minimizar el *makespan*). Branch & Bound:
+backtracking que poda por **optimalidad** usando una cota.
+
+**Parámetros:** `contenedores` (cantidad de personajes, al menos 1).
+
+**Ejemplo:** `GET /api/seleccion/repartir?contenedores=3`
+
+**Respuesta (recortada):**
+```json
+{
+  "porContenedor": {
+    "Personaje 1": [{"id":"OCC1","nombre":"Poción ígnea","peso":7.0,"valor":48.0,"nodoId":"CC3"}, "..."],
+    "Personaje 2": ["..."],
+    "Personaje 3": ["..."]
+  },
+  "cargaMaxima": 36.0, "cargas": [36.0, 36.0, 36.0], "cota": 36.0,
+  "nodosExplorados": 546, "nodosPodados": 760, "nodosSinPoda": 1.270932914164E12
+}
+```
+Los 25 objetos pesan 108 kg y quedan **36 kg exactos por personaje**:
+
+| Personaje | Objetos | kg |
+|---|---|---|
+| 1 | Poción ígnea, Hacha ígnea, Gema ígnea, Arco antiguo, Gema del desierto (7 c/u), Lanza ígnea (1) | 36 |
+| 2 | Antorcha antigua, Armadura (6 c/u), Antorcha del desierto, Hacha del desierto, Mapa (5 c/u), Antorcha ígnea, Arco ígneo (4 c/u), Gema (1) | 36 |
+| 3 | Gema antigua, Lanza antigua, Escudo antiguo, Armadura antigua, Arco (4 c/u), Mapa ígneo, Mapa del desierto, Arco del desierto, Hacha (3 c/u), Lanza del desierto, Espada del desierto (2 c/u) | 36 |
+
+**Cómo funciona:**
+- **Ramificar:** el nivel `i` del árbol decide a qué personaje va el objeto
+  `i`; cada nodo tiene hasta `k` hijos. Los objetos se procesan del más pesado
+  al más liviano (con el MergeSort propio), para que las cargas grandes
+  aparezcan arriba y la cota pode antes.
+- **Acotar:** para cada hijo se calcula una **cota inferior** de la mejor carga
+  máxima que se puede lograr desde ahí:
+  ```
+  cota(hijo) = max( carga máxima después de asignar el objeto , peso total / k )
+  ```
+  Como los pesos son enteros, se usa el techo de `peso total / k`
+  (108 / 3 = **36**).
+- **Podar:** si `cota(hijo) >= mejor carga máxima encontrada`, esa rama no
+  puede mejorar y se descarta sin explorarla. Además:
+  - si se encuentra un reparto que **iguala la cota global**, es óptimo y la
+    búsqueda termina;
+  - los personajes son idénticos: mandar el objeto a dos personajes con la
+    misma carga da subárboles equivalentes, así que se prueba solo el primero
+    (poda por simetría).
+
+**Por qué la cota es optimista:** nunca sobreestima lo que se puede lograr.
+La carga máxima actual solo puede subir al seguir asignando objetos, y aunque
+lo que falta se repartiera perfecto, algún personaje tiene que cargar al menos
+el promedio `total / k`. Entonces ninguna solución de esa rama puede ser mejor
+que la cota. Si la cota **sobreestimara**, se podrían descartar ramas que
+contienen el óptimo y el resultado dejaría de ser óptimo.
+
+**Poda en números** (25 objetos, 3 personajes):
+
+| | Nodos |
+|---|---|
+| Árbol completo sin poda (1 + 3 + 3² + … + 3²⁵) | 1.270.932.914.164 |
+| Explorados con Branch & Bound | **546** |
+| Ramas podadas por la cota | **760** |
+
+Con otras cantidades de personajes también llega al reparto perfecto: 54 kg con
+2, 27 con 4, 22 con 5 (techo de 21,6), 18 con 6, 16 con 7 y 14 con 8.
+
+**Errores:** `contenedores < 1` devuelve `400 Bad Request`.
+
+**Complejidad temporal:** O(kⁿ) en el peor caso, porque el árbol tiene
+1 + k + … + kⁿ nodos. La cota no cambia el peor caso, pero en la práctica
+explora una fracción mínima (546 de 1,27 billones).
+
+**Complejidad espacial:** O(n + k): la recursión tiene profundidad n y se
+guardan las cargas de los k personajes y la mejor asignación.
+
+**Estructura usada:** arreglo `Item[]` ordenado por peso, arreglo `double[k]`
+de cargas, arreglo `int[n]` con la asignación actual y la mejor, y recursión.
+
+**Tests:** `RamificacionYPodaTest` (7 casos: el reparto de 36 kg con 3
+personajes, 546 nodos explorados y 760 podados, de 1 a 8 personajes, 300 casos
+al azar contra fuerza bruta, un caso donde el promedio no se alcanza, más
+personajes que objetos y casos borde) y `SeleccionControllerTest`.
+
+---
+
+### Endpoint opcional pendiente
+
 - **`GET /api/grafo/ucs?origen=VB1&destino=CC11` (Opcional — Uniform Cost Search):** responde `501 Not Implemented` (`{"estado":"PENDIENTE","detalle":"Algoritmo aun no implementado: UCS"}`).
