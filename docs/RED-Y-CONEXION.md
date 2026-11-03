@@ -73,7 +73,7 @@ epoca en que se trabajaba con Neo4j local:
 ```
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=tpogrupo12
+NEO4J_PASSWORD=<la password local de ese momento>
 ```
 
 Spring ordena la configuracion asi:
