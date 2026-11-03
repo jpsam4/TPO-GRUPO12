@@ -106,6 +106,12 @@ public class GrafoController {
         return caminosMinimos.ucs(grafoService.cargar(NO_DIRIGIDO), origen, destino);
     }
 
+    /** GET /api/grafo/ucs/comparacion?origen=VB1&destino=VB8   (nodos expandidos: UCS contra Dijkstra) */
+    @GetMapping("/ucs/comparacion")
+    public CaminosMinimos.ComparacionUcs ucsComparacion(@RequestParam String origen, @RequestParam String destino) {
+        return caminosMinimos.compararUcsConDijkstra(grafoService.cargar(NO_DIRIGIDO), origen, destino);
+    }
+
     /** GET /api/grafo/prim?origen=VB1   (el MST exige grafo NO dirigido) */
     @GetMapping("/prim")
     public ArbolRecubrimiento.Mst prim(@RequestParam String origen) {

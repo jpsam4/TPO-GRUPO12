@@ -159,13 +159,23 @@ class GrafoControllerTest {
     }
 
     @Test
-    @DisplayName("Endpoint opcional sin implementar (/ucs) responde 501 JSON limpio, no 500")
-    void ucsPendienteDevuelve501() throws Exception {
+    @DisplayName("GET /api/grafo/ucs da el mismo camino que Dijkstra y /ucs/comparacion expande menos zonas")
+    void ucsValdoria() throws Exception {
         mockMvc.perform(get("/api/grafo/ucs")
                         .param("origen", "VB1")
                         .param("destino", "CC11"))
-                .andExpect(status().isNotImplemented())
-                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.costoTotal").value(103.0))
+                .andExpect(jsonPath("$.vertices.length()").value(22));
+
+        mockMvc.perform(get("/api/grafo/ucs/comparacion")
+                        .param("origen", "VB1")
+                        .param("destino", "VB8"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.camino.costoTotal").value(20.0))
+                .andExpect(jsonPath("$.mismoCosto").value(true))
+                .andExpect(jsonPath("$.ucsNodosExpandidos").value(8))
+                .andExpect(jsonPath("$.dijkstraNodosExpandidos").value(38));
     }
 
     @Test
