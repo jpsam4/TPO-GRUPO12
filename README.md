@@ -255,5 +255,6 @@ Usamos **Claude** (Anthropic) como asistente en estas tareas:
 
 - **Simulador del dominio.** Un integrante armó con Claude un juego web de Valdoria en JavaScript para validar que el dominio tuviera sentido y que cada algoritmo diera un resultado interesante. Después lo usamos para generar las cuatro regiones y dejarlas fijas. El simulador no forma parte de la entrega: los algoritmos del TPO se implementan en Java dentro de `algorithm/`.
 - **Verificación de datos.** Calculamos con código los resultados esperados de cada algoritmo sobre el reino, para tener una referencia contra la cual testear.
+- **Revisión previa a la entrega.** Usamos Claude Code para revisar el repositorio contra la consigna (`docs/CONSIGNAS-TPO.md`) como lo haría el docente. Lo que encontró y lo que se corrigió está en [`docs/REVISION.md`](docs/REVISION.md): credencial en la documentación, un bucle de filtrado dentro del controller, manejo de errores no previstos, tope a la tabla de la mochila y el UCS opcional.
 
 Todas las decisiones de diseño fueron revisadas y aprobadas por el grupo, y cada integrante debe poder explicar cualquier parte del trabajo sin asistencia.

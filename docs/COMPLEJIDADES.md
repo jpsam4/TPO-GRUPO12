@@ -21,6 +21,7 @@ no la de la red ni la de la base.
 | DFS | Grafos (recorrido) | — (cada vértice se visita una vez) | O(V + E) | O(V) | Lista de adyacencia + `boolean[] visitado` + pila de recursión |
 | BFS | Grafos (recorrido) | — | O(V + E) | O(V) | Lista de adyacencia + cola FIFO `ArrayDeque` + `boolean[] visitado` |
 | Dijkstra | Greedy sobre grafos | — | O((V + E) log V) | O(V + E) | Lista de adyacencia + heap binario (`PriorityQueue`) con borrado perezoso + `dist[]` y `predecesor[]` |
+| UCS (opcional) | Greedy sobre grafos | — | O((V + E) log V) peor caso; expande sólo dist < dist[destino] | O(V + E) | Igual que Dijkstra, con parada temprana al extraer el destino |
 | Prim | Greedy (árbol mínimo) | — | O(E log V) | O(V + E) | Lista de adyacencia + heap binario (`PriorityQueue`) + arreglos `key[]`, `parent[]` e `inMST[]` |
 | Kruskal | Greedy (árbol mínimo) | — | O(E log E) = O(E log V) | O(V + E) | Lista de aristas ordenada con MergeSort + Union-Find con compresión de caminos y unión por rango |
 | Greedy de mochila | Greedy | — | O(n log n) | O(n) | Arreglo ordenado por ratio con MergeSort + una pasada lineal |
@@ -111,6 +112,7 @@ recursión y las k cargas.
 |---|---|---|
 | BFS contra Dijkstra | DA4 → DA9: BFS da 2 caminos (13 de energía), Dijkstra 3 caminos (11) | `ENDPOINTS.md`, BFS |
 | Greedy contra programación dinámica | Valle de Brezo, 10 kg: 30 contra 35 (pasa en las 4 regiones) | `/api/seleccion/greedy` y `/dinamica` |
+| UCS contra Dijkstra | VB1 → VB8: 8 contra 38 zonas expandidas, mismo costo 20 | `/api/grafo/ucs/comparacion` |
 | Floyd contra Dijkstra × V | 54.872 ternas contra 1.444 nodos expandidos; mismas distancias | `/api/grafo/floyd/comparacion` |
 | Backtracking con poda contra sin poda | 31.327 contra 485.647 estados (reino completo) | `/api/grafo/rutas/comparacion` |
 | Branch & Bound contra árbol completo | 546 contra 1,27 billones de nodos | `/api/seleccion/repartir` |
