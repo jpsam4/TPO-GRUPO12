@@ -169,6 +169,30 @@ class GrafoControllerTest {
     }
 
     @Test
+    @DisplayName("Si la base falla, la respuesta es 500 JSON generico, sin stack trace ni mensaje interno")
+    void errorInesperadoSinStackTrace() throws Exception {
+        when(almacen.todosLosNodos()).thenThrow(new RuntimeException("detalle interno de Neo4j"));
+        mockMvc.perform(get("/api/grafo/bfs").param("origen", "VB1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.estado").value("ERROR"))
+                .andExpect(jsonPath("$.detalle").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Neo4j"))))
+                .andExpect(jsonPath("$.trace").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Ruta inexistente responde 404 y metodo no permitido 405, ambos con JSON limpio")
+    void rutaInexistenteYMetodoNoPermitido() throws Exception {
+        mockMvc.perform(get("/api/grafo/no-existe"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.estado").value("ERROR"));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/grafo/bfs").param("origen", "VB1"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.estado").value("ERROR"));
+    }
+
+    @Test
     @DisplayName("Zonas inexistentes, parametros faltantes o mal tipados responden 400 JSON limpio")
     void erroresManejadosCon400() throws Exception {
         mockMvc.perform(get("/api/grafo/dfs").param("origen", "INEXISTENTE"))

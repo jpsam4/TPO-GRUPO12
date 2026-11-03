@@ -172,6 +172,14 @@ class SeleccionTest {
         assertThrows(IllegalArgumentException.class, () -> seleccion.programacionDinamica(region("VB"), -1));
         List<Item> conPesoRaro = List.of(new Item("X", "Pluma", 0.5, 3, null));
         assertThrows(IllegalArgumentException.class, () -> seleccion.programacionDinamica(conPesoRaro, 5));
+        assertThrows(IllegalArgumentException.class, () -> seleccion.greedy(region("VB"), Double.NaN));
+    }
+
+    @Test
+    @DisplayName("Una capacidad enorme no reserva una tabla gigante: 400 en lugar de OutOfMemoryError")
+    void capacidadEnormeSeRechaza() {
+        assertThrows(IllegalArgumentException.class,
+                () -> seleccion.programacionDinamica(region("VB"), Integer.MAX_VALUE));
     }
 
     @Test
