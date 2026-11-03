@@ -198,8 +198,9 @@ public class ArbolRecubrimiento {
 
         if (elegidas.size() < n - 1) {
             throw new IllegalArgumentException(
-                    "El grafo no es conexo: Kruskal solo pudo unir "
-                            + (elegidas.size() + 1) + " de " + n + " vertices");
+                    "El grafo no es conexo: Kruskal formo un bosque de " + elegidas.size()
+                            + " aristas en " + (n - elegidas.size()) + " componentes (un arbol de "
+                            + n + " vertices necesita " + (n - 1) + ")");
         }
 
         return new Mst(elegidas, costoTotal);
