@@ -70,16 +70,7 @@ public class CaminosMinimos {
         int n = grafo.cantidadVertices();
 
         // Validacion previa: ningun camino puede tener costo negativo.
-        for (int u = 0; u < n; u++) {
-            for (Grafo.Arista a : grafo.vecinos(u)) {
-                if (a.costo() < 0) {
-                    throw new IllegalArgumentException(
-                            "Dijkstra no admite aristas de costo negativo: "
-                                    + grafo.idDe(u) + " -> " + grafo.idDe(a.destino())
-                                    + " (" + a.costo() + ")");
-                }
-            }
-        }
+        exigirCostosNoNegativos(grafo, "Dijkstra");
 
         double[] dist = new double[n];
         int[] predecesor = new int[n];
@@ -348,14 +339,106 @@ public class CaminosMinimos {
     }
 
     /**
-     * UCS (Uniform Cost Search): igual que Dijkstra pero con parada temprana
-     * al expandir el destino.
+     * UCS (Uniform Cost Search): igual que Dijkstra pero con PARADA TEMPRANA
+     * al expandir (sacar del heap) el destino.
      *
-     * OPCIONAL. Solo suma si ya estan implementados Dijkstra y Floyd.
-     * Si lo hacen, en el coloquio hay que poder mostrar la diferencia de
-     * nodos expandidos respecto de Dijkstra sobre la misma consulta.
+     * Por que se puede parar ahi y no antes: cuando el destino sale del heap
+     * es el vertice abierto de menor distancia, y como los costos son >= 0
+     * ningun camino que pase por otro vertice abierto puede abaratarlo. Parar
+     * al ENCOLARLO seria un error: la primera distancia con la que entra al
+     * heap no tiene por que ser la minima (ej. DA4 -> DA9: entra con 13 por
+     * DA7, pero el minimo es 11 por DA5-DA6).
+     *
+     * Complejidad temporal: O((V + E) log V) en el peor caso, igual que
+     *   Dijkstra (si el destino es el ultimo en cerrarse). En la practica
+     *   expande solo los vertices con dist < dist[destino].
+     * Complejidad espacial: O(V + E), las mismas estructuras que Dijkstra.
      */
     public Camino ucs(Grafo grafo, String origenId, String destinoId) {
-        throw new PendienteDeImplementar("UCS");
+        return busquedaUcs(grafo, origenId, destinoId).camino();
+    }
+
+    /**
+     * Comparacion de UCS contra Dijkstra completo sobre la misma consulta.
+     *
+     * @param ucsNodosExpandidos       vertices cerrados por UCS hasta sacar el destino
+     * @param dijkstraNodosExpandidos  vertices cerrados por Dijkstra (todos los alcanzables)
+     * @param mismoCosto               si los dos encontraron el mismo costo minimo
+     */
+    public record ComparacionUcs(Camino camino, long ucsNodosExpandidos,
+                                 long dijkstraNodosExpandidos, boolean mismoCosto) { }
+
+    public ComparacionUcs compararUcsConDijkstra(Grafo grafo, String origenId, String destinoId) {
+        ResultadoUcs ucs = busquedaUcs(grafo, origenId, destinoId);
+        int n = grafo.cantidadVertices();
+        long[] contadores = new long[3];
+        double[] dist = new double[n];
+        dijkstraDesde(grafo, grafo.indiceDe(origenId), dist, new int[n], contadores);
+        double costoDijkstra = dist[grafo.indiceDe(destinoId)];
+        return new ComparacionUcs(ucs.camino(), ucs.expandidos(), contadores[0],
+                costoDijkstra == ucs.camino().costoTotal());
+    }
+
+    private record ResultadoUcs(Camino camino, long expandidos) { }
+
+    private ResultadoUcs busquedaUcs(Grafo grafo, String origenId, String destinoId) {
+        int origen = grafo.indiceDe(origenId);
+        int destino = grafo.indiceDe(destinoId);
+        int n = grafo.cantidadVertices();
+        exigirCostosNoNegativos(grafo, "UCS");
+
+        double[] dist = new double[n];
+        int[] predecesor = new int[n];
+        boolean[] visitado = new boolean[n];
+        Arrays.fill(dist, Grafo.INFINITO);
+        Arrays.fill(predecesor, -1);
+
+        PriorityQueue<EntradaCola> cola = new PriorityQueue<>();
+        dist[origen] = 0.0;
+        cola.add(new EntradaCola(origen, 0.0));
+        long expandidos = 0;
+
+        while (!cola.isEmpty()) {
+            int u = cola.poll().vertice();
+            if (visitado[u]) {
+                continue;                       // entrada obsoleta (borrado perezoso)
+            }
+            visitado[u] = true;
+            expandidos++;
+            if (u == destino) {
+                break;                          // PARADA TEMPRANA: dist[destino] ya es definitiva
+            }
+            for (Grafo.Arista a : grafo.vecinos(u)) {
+                int v = a.destino();
+                if (!visitado[v] && dist[u] + a.costo() < dist[v]) {
+                    dist[v] = dist[u] + a.costo();
+                    predecesor[v] = u;
+                    cola.add(new EntradaCola(v, dist[v]));
+                }
+            }
+        }
+
+        if (dist[destino] == Grafo.INFINITO) {
+            return new ResultadoUcs(new Camino(List.of(), Grafo.INFINITO), expandidos);
+        }
+        ArrayDeque<String> camino = new ArrayDeque<>();
+        for (int v = destino; v != -1; v = predecesor[v]) {
+            camino.addFirst(grafo.idDe(v));
+        }
+        return new ResultadoUcs(new Camino(new ArrayList<>(camino), dist[destino]), expandidos);
+    }
+
+    /** Dijkstra y UCS son greedy: con una arista negativa dejan de ser correctos. O(V + E). */
+    private static void exigirCostosNoNegativos(Grafo grafo, String algoritmo) {
+        for (int u = 0; u < grafo.cantidadVertices(); u++) {
+            for (Grafo.Arista a : grafo.vecinos(u)) {
+                if (a.costo() < 0) {
+                    throw new IllegalArgumentException(
+                            algoritmo + " no admite aristas de costo negativo: "
+                                    + grafo.idDe(u) + " -> " + grafo.idDe(a.destino())
+                                    + " (" + a.costo() + ")");
+                }
+            }
+        }
     }
 }
