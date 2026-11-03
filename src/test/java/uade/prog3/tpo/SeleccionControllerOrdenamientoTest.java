@@ -13,6 +13,7 @@ import uade.prog3.tpo.algorithm.Seleccion;
 import uade.prog3.tpo.controller.SeleccionController;
 import uade.prog3.tpo.model.Item;
 import uade.prog3.tpo.repository.AlmacenNeo4j;
+import uade.prog3.tpo.service.ItemService;
 
 import java.util.List;
 
@@ -30,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * y sin red, que es lo que se necesita para que ./mvnw test pase siempre.
  */
 @WebMvcTest(SeleccionController.class)
-@Import(Ordenamiento.class)
+@Import({ItemService.class, Ordenamiento.class})
 class SeleccionControllerOrdenamientoTest {
 
     @Autowired
