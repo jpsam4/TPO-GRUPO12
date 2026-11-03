@@ -16,6 +16,8 @@ import uade.prog3.tpo.repository.AlmacenNeo4j;
 import uade.prog3.tpo.seed.DatosValdoria;
 import uade.prog3.tpo.service.ItemService;
 
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -116,5 +118,13 @@ class SeleccionControllerTest {
                 .andExpect(jsonPath("$.cargas.length()").value(3))
                 .andExpect(jsonPath("$.nodosExplorados").value(546))
                 .andExpect(jsonPath("$.nodosPodados").value(760));
+    }
+
+    @Test
+    @DisplayName("contenedores=0 se rechaza con 400 SIN consultar la base")
+    void repartirInvalidoNoConsultaLaBase() throws Exception {
+        mockMvc.perform(get("/api/seleccion/repartir").param("contenedores", "0"))
+                .andExpect(status().isBadRequest());
+        verify(almacen, never()).todosLosItems();
     }
 }

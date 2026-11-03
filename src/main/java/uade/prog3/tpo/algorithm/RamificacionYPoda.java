@@ -99,9 +99,7 @@ public class RamificacionYPoda {
      *   guardan las cargas de los k personajes y la mejor asignacion.
      */
     public Asignacion repartir(List<Item> items, int cantidadContenedores) {
-        if (cantidadContenedores < 1) {
-            throw new IllegalArgumentException("La cantidad de contenedores debe ser al menos 1");
-        }
+        exigirContenedoresValidos(cantidadContenedores);
         Busqueda b = new Busqueda();
         b.items = ordenamiento.mergeSort(items, POR_PESO_DESCENDENTE).toArray(new Item[0]);
         b.k = cantidadContenedores;
@@ -123,6 +121,17 @@ public class RamificacionYPoda {
         explorar(b, 0, 0.0);
 
         return armarResultado(b, total);
+    }
+
+    /**
+     * Valida k antes de hacer nada. Es publico para que el controller lo llame
+     * ANTES de pedir los objetos a la base: un parametro invalido no tiene que
+     * pagar una consulta (ni devolver 500 si la base esta caida).
+     */
+    public static void exigirContenedoresValidos(int cantidadContenedores) {
+        if (cantidadContenedores < 1) {
+            throw new IllegalArgumentException("La cantidad de contenedores debe ser al menos 1");
+        }
     }
 
     private void explorar(Busqueda b, int i, double cargaMaxima) {

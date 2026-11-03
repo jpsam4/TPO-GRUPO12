@@ -63,9 +63,10 @@ public class SeleccionController {
         return ordenamiento.mergeSort(itemService.todos(), comparador(criterio));
     }
 
-    /** GET /api/seleccion/repartir?contenedores=3   (la validacion la hace RamificacionYPoda) */
+    /** GET /api/seleccion/repartir?contenedores=3   (se valida antes de consultar la base) */
     @GetMapping("/repartir")
     public RamificacionYPoda.Asignacion repartir(@RequestParam int contenedores) {
+        RamificacionYPoda.exigirContenedoresValidos(contenedores);
         return ramificacionYPoda.repartir(itemService.todos(), contenedores);
     }
 

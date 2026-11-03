@@ -74,13 +74,21 @@ public class CaminosMinimos {
 
         double[] dist = new double[n];
         int[] predecesor = new int[n];
-        dijkstraDesde(grafo, origen, dist, predecesor, new long[3]);
+        dijkstraDesde(grafo, origen, SIN_PARADA, dist, predecesor, new long[3]);
+        return reconstruirCamino(grafo, destino, dist, predecesor);
+    }
 
+    /** Valor de "destino" para dijkstraDesde que significa: cerrar todos los vertices alcanzables. */
+    private static final int SIN_PARADA = -1;
+
+    /**
+     * Reconstruccion del camino desde el destino hacia atras con predecesor[]:
+     * O(V). Si el destino quedo en INFINITO no hay camino.
+     */
+    private static Camino reconstruirCamino(Grafo grafo, int destino, double[] dist, int[] predecesor) {
         if (dist[destino] == Grafo.INFINITO) {
             return new Camino(List.of(), Grafo.INFINITO);
         }
-
-        // Reconstruccion del camino desde el destino hacia atras con predecesor[].
         ArrayDeque<String> camino = new ArrayDeque<>();
         for (int v = destino; v != -1; v = predecesor[v]) {
             camino.addFirst(grafo.idDe(v));
@@ -89,15 +97,18 @@ public class CaminosMinimos {
     }
 
     /**
-     * Nucleo de Dijkstra desde un origen hacia TODOS los vertices. Llena
-     * dist[] y predecesor[] (de tamano V). Lo usan dijkstra() y la comparacion
-     * contra Floyd-Warshall.
+     * Nucleo de Dijkstra desde un origen. Llena dist[] y predecesor[] (de
+     * tamano V). Con destino = SIN_PARADA cierra TODOS los vertices
+     * alcanzables (Dijkstra, comparacion con Floyd); con un destino concreto
+     * corta apenas lo extrae del heap (UCS): en ese momento dist[destino] ya
+     * es definitiva.
      *
      * contadores[0] = vertices cerrados (nodos expandidos)
      * contadores[1] = extracciones del heap, incluidas las entradas obsoletas
      * contadores[2] = relajaciones que mejoraron una distancia
      */
-    private void dijkstraDesde(Grafo grafo, int origen, double[] dist, int[] predecesor, long[] contadores) {
+    private void dijkstraDesde(Grafo grafo, int origen, int destino,
+                               double[] dist, int[] predecesor, long[] contadores) {
         int n = grafo.cantidadVertices();
         boolean[] visitado = new boolean[n];
         Arrays.fill(dist, Grafo.INFINITO);
@@ -117,6 +128,9 @@ public class CaminosMinimos {
             }
             visitado[u] = true;
             contadores[0]++;
+            if (u == destino) {
+                break;      // PARADA TEMPRANA (solo UCS): dist[destino] ya es definitiva
+            }
 
             for (Grafo.Arista a : grafo.vecinos(u)) {
                 int v = a.destino();
@@ -326,7 +340,7 @@ public class CaminosMinimos {
         double[] dist = new double[n];
         int[] predecesor = new int[n];
         for (int origen = 0; origen < n; origen++) {
-            dijkstraDesde(grafo, origen, dist, predecesor, contadores);
+            dijkstraDesde(grafo, origen, SIN_PARADA, dist, predecesor, contadores);
             for (int j = 0; j < n; j++) {
                 if (Math.abs(dist[j] - f.dist()[origen][j]) > 1e-9
                         && !(dist[j] == Grafo.INFINITO && f.dist()[origen][j] == Grafo.INFINITO)) {
@@ -355,7 +369,7 @@ public class CaminosMinimos {
      * Complejidad espacial: O(V + E), las mismas estructuras que Dijkstra.
      */
     public Camino ucs(Grafo grafo, String origenId, String destinoId) {
-        return busquedaUcs(grafo, origenId, destinoId).camino();
+        return compararUcsConDijkstra(grafo, origenId, destinoId, false).camino();
     }
 
     /**
@@ -369,19 +383,12 @@ public class CaminosMinimos {
                                  long dijkstraNodosExpandidos, boolean mismoCosto) { }
 
     public ComparacionUcs compararUcsConDijkstra(Grafo grafo, String origenId, String destinoId) {
-        ResultadoUcs ucs = busquedaUcs(grafo, origenId, destinoId);
-        int n = grafo.cantidadVertices();
-        long[] contadores = new long[3];
-        double[] dist = new double[n];
-        dijkstraDesde(grafo, grafo.indiceDe(origenId), dist, new int[n], contadores);
-        double costoDijkstra = dist[grafo.indiceDe(destinoId)];
-        return new ComparacionUcs(ucs.camino(), ucs.expandidos(), contadores[0],
-                costoDijkstra == ucs.camino().costoTotal());
+        return compararUcsConDijkstra(grafo, origenId, destinoId, true);
     }
 
-    private record ResultadoUcs(Camino camino, long expandidos) { }
-
-    private ResultadoUcs busquedaUcs(Grafo grafo, String origenId, String destinoId) {
+    /** Corre UCS y, si se pide, tambien Dijkstra completo para contar la diferencia. */
+    private ComparacionUcs compararUcsConDijkstra(Grafo grafo, String origenId, String destinoId,
+                                                  boolean correrDijkstra) {
         int origen = grafo.indiceDe(origenId);
         int destino = grafo.indiceDe(destinoId);
         int n = grafo.cantidadVertices();
@@ -389,43 +396,16 @@ public class CaminosMinimos {
 
         double[] dist = new double[n];
         int[] predecesor = new int[n];
-        boolean[] visitado = new boolean[n];
-        Arrays.fill(dist, Grafo.INFINITO);
-        Arrays.fill(predecesor, -1);
-
-        PriorityQueue<EntradaCola> cola = new PriorityQueue<>();
-        dist[origen] = 0.0;
-        cola.add(new EntradaCola(origen, 0.0));
-        long expandidos = 0;
-
-        while (!cola.isEmpty()) {
-            int u = cola.poll().vertice();
-            if (visitado[u]) {
-                continue;                       // entrada obsoleta (borrado perezoso)
-            }
-            visitado[u] = true;
-            expandidos++;
-            if (u == destino) {
-                break;                          // PARADA TEMPRANA: dist[destino] ya es definitiva
-            }
-            for (Grafo.Arista a : grafo.vecinos(u)) {
-                int v = a.destino();
-                if (!visitado[v] && dist[u] + a.costo() < dist[v]) {
-                    dist[v] = dist[u] + a.costo();
-                    predecesor[v] = u;
-                    cola.add(new EntradaCola(v, dist[v]));
-                }
-            }
+        long[] ucs = new long[3];
+        dijkstraDesde(grafo, origen, destino, dist, predecesor, ucs);
+        Camino camino = reconstruirCamino(grafo, destino, dist, predecesor);
+        if (!correrDijkstra) {
+            return new ComparacionUcs(camino, ucs[0], 0, true);
         }
 
-        if (dist[destino] == Grafo.INFINITO) {
-            return new ResultadoUcs(new Camino(List.of(), Grafo.INFINITO), expandidos);
-        }
-        ArrayDeque<String> camino = new ArrayDeque<>();
-        for (int v = destino; v != -1; v = predecesor[v]) {
-            camino.addFirst(grafo.idDe(v));
-        }
-        return new ResultadoUcs(new Camino(new ArrayList<>(camino), dist[destino]), expandidos);
+        long[] dijkstra = new long[3];
+        dijkstraDesde(grafo, origen, SIN_PARADA, dist, predecesor, dijkstra);
+        return new ComparacionUcs(camino, ucs[0], dijkstra[0], dist[destino] == camino.costoTotal());
     }
 
     /** Dijkstra y UCS son greedy: con una arista negativa dejan de ser correctos. O(V + E). */

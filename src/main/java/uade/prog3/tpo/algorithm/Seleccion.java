@@ -1,5 +1,7 @@
 package uade.prog3.tpo.algorithm;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uade.prog3.tpo.model.Item;
 
@@ -33,13 +35,30 @@ public class Seleccion {
             Comparator.comparingDouble(Item::ratioValorPeso).reversed()
                     .thenComparing(Item::getId);
 
-    /** Tope de celdas de la tabla dp (unos 80 MB de doubles). */
-    static final long MAX_CELDAS_DP = 10_000_000L;
+    /** Tope por defecto de celdas de la tabla dp: 10^7 doubles, unos 80 MB. */
+    public static final long MAX_CELDAS_DP_POR_DEFECTO = 10_000_000L;
+
+    /**
+     * Una sola tabla dp no puede ocupar mas de 1/8 del heap: asi entran varias
+     * consultas simultaneas sin OutOfMemoryError (en Render, con -Xmx350m, el
+     * tope efectivo baja a ~5,7 millones de celdas).
+     */
+    private static final int FRACCION_DEL_HEAP = 8;
 
     private final Ordenamiento ordenamiento;
+    private final long maxCeldasDp;
 
     public Seleccion(Ordenamiento ordenamiento) {
+        this(ordenamiento, MAX_CELDAS_DP_POR_DEFECTO);
+    }
+
+    /** @param maxCeldasDp tope configurado (app.mochila.max-celdas); se recorta segun el heap real. */
+    @Autowired
+    public Seleccion(Ordenamiento ordenamiento,
+                     @Value("${app.mochila.max-celdas:" + MAX_CELDAS_DP_POR_DEFECTO + "}") long maxCeldasDp) {
         this.ordenamiento = ordenamiento;
+        long porHeap = Runtime.getRuntime().maxMemory() / FRACCION_DEL_HEAP / Double.BYTES;
+        this.maxCeldasDp = Math.min(maxCeldasDp, porHeap);
     }
 
     /**
@@ -111,9 +130,9 @@ public class Seleccion {
         int n = items.size();
         // La tabla tiene (n+1)(W+1) celdas: con una W enorme (ej. capacidad=2000000000)
         // reservarla tiraria OutOfMemoryError. Se rechaza antes con un 400.
-        if ((long) (n + 1) * ((long) capacidad + 1) > MAX_CELDAS_DP) {
+        if ((long) (n + 1) * ((long) capacidad + 1) > maxCeldasDp) {
             throw new IllegalArgumentException("La tabla dp tendria " + (n + 1) + " x " + ((long) capacidad + 1)
-                    + " celdas (maximo " + MAX_CELDAS_DP + "). Es pseudopolinomica: O(n * W) crece con el VALOR de W.");
+                    + " celdas (maximo " + maxCeldasDp + "). Es pseudopolinomica: O(n * W) crece con el VALOR de W.");
         }
         int[] peso = new int[n];
         for (int i = 0; i < n; i++) {
