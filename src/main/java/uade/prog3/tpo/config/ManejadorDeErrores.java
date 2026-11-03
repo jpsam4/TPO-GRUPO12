@@ -65,12 +65,16 @@ public class ManejadorDeErrores {
     /** Red de seguridad: nada que no este previsto arriba llega al cliente con su traza. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> inesperado(Exception e) {
-        // Las excepciones propias de Spring MVC (405 metodo no permitido, 415, etc.)
-        // ya traen su codigo HTTP: se respeta en lugar de convertirlas en 500.
+        // Las excepciones propias de Spring MVC (405, 415, 503 por timeout, etc.)
+        // ya traen su codigo HTTP y un detalle legible: se respetan los dos en
+        // lugar de convertirlas en un 500 generico.
         if (e instanceof ErrorResponse errorDeSpring) {
             HttpStatus status = HttpStatus.resolve(errorDeSpring.getStatusCode().value());
-            if (status != null && status.is4xxClientError()) {
-                return respuesta(status, "ERROR", status.getReasonPhrase());
+            if (status != null) {
+                if (status.is5xxServerError()) {
+                    log.warn("Spring respondio {}: {}", status.value(), e.getMessage());
+                }
+                return respuesta(status, "ERROR", errorDeSpring.getBody().getDetail());
             }
         }
         log.error("Error no previsto atendiendo la consulta", e);

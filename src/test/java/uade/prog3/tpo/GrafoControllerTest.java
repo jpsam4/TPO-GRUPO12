@@ -17,8 +17,11 @@ import uade.prog3.tpo.repository.AlmacenNeo4j;
 import uade.prog3.tpo.seed.DatosValdoria;
 import uade.prog3.tpo.service.GrafoService;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
@@ -185,8 +188,7 @@ class GrafoControllerTest {
         mockMvc.perform(get("/api/grafo/bfs").param("origen", "VB1"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.estado").value("ERROR"))
-                .andExpect(jsonPath("$.detalle").value(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("Neo4j"))))
+                .andExpect(jsonPath("$.detalle").value(not(containsString("Neo4j"))))
                 .andExpect(jsonPath("$.trace").doesNotExist());
     }
 
@@ -196,10 +198,10 @@ class GrafoControllerTest {
         mockMvc.perform(get("/api/grafo/no-existe"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.estado").value("ERROR"));
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .post("/api/grafo/bfs").param("origen", "VB1"))
+        mockMvc.perform(post("/api/grafo/bfs").param("origen", "VB1"))
                 .andExpect(status().isMethodNotAllowed())
-                .andExpect(jsonPath("$.estado").value("ERROR"));
+                .andExpect(jsonPath("$.estado").value("ERROR"))
+                .andExpect(jsonPath("$.detalle").value(containsString("POST")));
     }
 
     @Test

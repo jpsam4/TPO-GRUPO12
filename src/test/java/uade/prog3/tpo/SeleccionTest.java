@@ -183,6 +183,16 @@ class SeleccionTest {
     }
 
     @Test
+    @DisplayName("El tope de celdas es configurable: con 100 celdas entra una tabla de 6 x 16 y una de 6 x 17 no")
+    void topeDeCeldasConfigurable() {
+        Seleccion chica = new Seleccion(new Ordenamiento(), 100);
+        List<Item> vb = region("VB");                       // 5 objetos -> 6 filas
+        assertEquals(35.0, chica.programacionDinamica(vb, 10).valorTotal());
+        chica.programacionDinamica(vb, 15);                 // 6 x 16 = 96 celdas
+        assertThrows(IllegalArgumentException.class, () -> chica.programacionDinamica(vb, 16));   // 6 x 17 = 102
+    }
+
+    @Test
     @DisplayName("La entrada no se modifica")
     void noModificaLaEntrada() {
         List<Item> vb = region("VB");

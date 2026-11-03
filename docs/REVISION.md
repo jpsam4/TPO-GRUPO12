@@ -24,7 +24,7 @@ penalizaciones). Hecha con Claude Code (ver «Uso de IA» en el README).
 
 | # | Hallazgo | Riesgo según la consigna | Estado |
 |---|---|---|---|
-| 1 | `docs/RED-Y-CONEXION.md` mostraba la password local de Neo4j. | Admisibilidad: «ninguna credencial en el repositorio». | **Corregido** en el árbol actual. Sigue en el historial (ver §3). |
+| 1 | `docs/RED-Y-CONEXION.md` mostraba la password local de Neo4j. | Admisibilidad: «ninguna credencial en el repositorio». | **Parcial**: se quitó del árbol actual, pero **sigue en el historial** desde `0863c80` (`git log -p -S <la password local de ese momento>` la encuentra). Hasta reescribir el historial, la entrega sigue sin cumplir 4.2 (ver §3). |
 | 2 | `SeleccionController` tenía un `for` que filtraba objetos por región. | −0,5: «lógica dentro de un controller». | **Corregido**: se movió a `service/ItemService`. |
 | 3 | `ManejadorDeErrores` no tenía red de seguridad: un error no previsto (base caída) o una excepción con mensaje `null` (`Map.of` tira NPE) salía con la respuesta por defecto de Spring. | −0,5: «endpoint que devuelve un stack trace». | **Corregido**: handler genérico (500 con mensaje genérico, detalle sólo en el log), 404/405 en JSON y cuerpo null-safe. |
 | 4 | `/api/seleccion/dinamica?capacidad=2000000000` reservaba una tabla de (n+1)·(W+1) doubles → `OutOfMemoryError`. | «Corre sin error». | **Corregido**: tope de 10⁷ celdas → 400 con la explicación de por qué es pseudopolinómica. |
@@ -32,7 +32,7 @@ penalizaciones). Hecha con Claude Code (ver «Uso de IA» en el README).
 | 6 | Mensaje de Kruskal en grafo no conexo informaba mal la cantidad de vértices unidos. | Cosmético. | **Corregido**: informa aristas y componentes. |
 | 7 | UCS opcional respondía 501. | Opcional. | **Implementado** con parada al extraer el destino y `/ucs/comparacion` (VB1→VB8: 8 zonas expandidas vs 38 de Dijkstra). |
 
-Tests después de las correcciones: **116**, todos en verde (`./mvnw test`).
+Tests después de las correcciones: **118**, todos en verde (`./mvnw test`).
 Nuevos: `UcsTest` (5), y casos en `GrafoControllerTest` (500 sin traza, 404,
 405, UCS) y `SeleccionTest` (NaN, capacidad enorme).
 
@@ -56,3 +56,14 @@ Nuevos: `UcsTest` (5), y casos en `GrafoControllerTest` (500 sin traza, 404,
 - ¿Por qué la cota del B&B es optimista y qué pasaría con una pesimista?
 - ¿Por qué Floyd admite aristas negativas y Dijkstra no? ¿Cómo se detecta el ciclo negativo?
 - ¿Por qué la mochila 0/1 es pseudopolinómica y qué protege el tope de celdas?
+
+## 5. Segunda pasada (code review de los cambios)
+
+| Hallazgo | Corrección |
+|---|---|
+| El handler genérico convertía errores 5xx propios de Spring (ej. 503 por timeout) en 500 y los logueaba como bug. | Se respeta el código de cualquier `ErrorResponse`; los 5xx se registran como aviso. |
+| Para los 4xx de Spring se perdía el detalle (ej. el 405 no decía qué método se usó). | Se devuelve `ProblemDetail.getDetail()` de Spring. |
+| `/repartir?contenedores=0` consultaba la base antes de rechazar el parámetro (y con la base caída daba 500 en vez de 400). | `RamificacionYPoda.exigirContenedoresValidos` se llama antes de pedir los objetos. |
+| UCS duplicaba el bucle de Dijkstra y la reconstrucción del camino. | `dijkstraDesde` recibe un destino opcional para la parada temprana y hay un único `reconstruirCamino`. |
+| El tope de la tabla dp era una constante fija, ajena al heap real. | Configurable con `app.mochila.max-celdas` y recortado a 1/8 del heap. |
+| Los tests usaban nombres completamente calificados. | Imports estáticos. |
