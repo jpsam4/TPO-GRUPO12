@@ -14,6 +14,7 @@ import uade.prog3.tpo.algorithm.Seleccion;
 import uade.prog3.tpo.controller.SeleccionController;
 import uade.prog3.tpo.repository.AlmacenNeo4j;
 import uade.prog3.tpo.seed.DatosValdoria;
+import uade.prog3.tpo.service.ItemService;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Test de slice web: no se conecta a Neo4j; el almacen esta mockeado.
  */
 @WebMvcTest(SeleccionController.class)
-@Import({Ordenamiento.class, Seleccion.class, RamificacionYPoda.class})
+@Import({ItemService.class, Ordenamiento.class, Seleccion.class, RamificacionYPoda.class})
 class SeleccionControllerTest {
 
     @Autowired

@@ -159,13 +159,47 @@ class GrafoControllerTest {
     }
 
     @Test
-    @DisplayName("Endpoint opcional sin implementar (/ucs) responde 501 JSON limpio, no 500")
-    void ucsPendienteDevuelve501() throws Exception {
+    @DisplayName("GET /api/grafo/ucs da el mismo camino que Dijkstra y /ucs/comparacion expande menos zonas")
+    void ucsValdoria() throws Exception {
         mockMvc.perform(get("/api/grafo/ucs")
                         .param("origen", "VB1")
                         .param("destino", "CC11"))
-                .andExpect(status().isNotImplemented())
-                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.costoTotal").value(103.0))
+                .andExpect(jsonPath("$.vertices.length()").value(22));
+
+        mockMvc.perform(get("/api/grafo/ucs/comparacion")
+                        .param("origen", "VB1")
+                        .param("destino", "VB8"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.camino.costoTotal").value(20.0))
+                .andExpect(jsonPath("$.mismoCosto").value(true))
+                .andExpect(jsonPath("$.ucsNodosExpandidos").value(8))
+                .andExpect(jsonPath("$.dijkstraNodosExpandidos").value(38));
+    }
+
+    @Test
+    @DisplayName("Si la base falla, la respuesta es 500 JSON generico, sin stack trace ni mensaje interno")
+    void errorInesperadoSinStackTrace() throws Exception {
+        when(almacen.todosLosNodos()).thenThrow(new RuntimeException("detalle interno de Neo4j"));
+        mockMvc.perform(get("/api/grafo/bfs").param("origen", "VB1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.estado").value("ERROR"))
+                .andExpect(jsonPath("$.detalle").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Neo4j"))))
+                .andExpect(jsonPath("$.trace").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Ruta inexistente responde 404 y metodo no permitido 405, ambos con JSON limpio")
+    void rutaInexistenteYMetodoNoPermitido() throws Exception {
+        mockMvc.perform(get("/api/grafo/no-existe"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.estado").value("ERROR"));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/grafo/bfs").param("origen", "VB1"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.estado").value("ERROR"));
     }
 
     @Test

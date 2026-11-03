@@ -9,8 +9,11 @@ delegan toda la lógica en el paquete `uade.prog3.tpo.algorithm`.
 **Manejo uniforme de errores (`ManejadorDeErrores`):** ningún endpoint devuelve
 stack traces. Todos los errores responden JSON `{"estado": "...", "detalle": "..."}`:
 - `400 Bad Request`: parámetro faltante, tipo inválido, zona/región inexistente, capacidad o cota negativa, arista negativa en algoritmos que exigen costos `>= 0` o grafo no conexo/dirigido en MST.
+- `400 Bad Request` también para una capacidad de mochila cuya tabla `dp` superaría 10.000.000 de celdas (evita un `OutOfMemoryError`).
+- `404 Not Found` / `405 Method Not Allowed`: ruta inexistente o método HTTP incorrecto.
 - `422 Unprocessable Entity`: ciclo de costo negativo detectado por Floyd-Warshall.
-- `501 Not Implemented`: algoritmo opcional o de un hito posterior aún pendiente.
+- `500 Internal Server Error`: cualquier error no previsto (por ejemplo, la base caída). El cuerpo trae un mensaje genérico; el detalle queda sólo en el log del servidor.
+- `501 Not Implemented`: reservado para algoritmos pendientes (hoy no queda ninguno).
 
 ### Resumen de endpoints
 
@@ -32,7 +35,8 @@ stack traces. Todos los errores responden JSON `{"estado": "...", "detalle": "..
 | `GET /api/grafo/rutas` | 8 | Backtracking con poda de viabilidad | O(b^d) / O(V!) peor caso | O(V) |
 | `GET /api/grafo/rutas/comparacion` | 8 | Backtracking con poda vs. sin poda | O(V!) peor caso | O(V) |
 | `GET /api/seleccion/repartir` | 11 | Branch & Bound de reparto (makespan) | O(kⁿ) peor caso, poda por cota | O(n + k) |
-| `GET /api/grafo/ucs` | Opc. | Uniform Cost Search *(opcional)* | — (`501`) | — |
+| `GET /api/grafo/ucs` | Opc. | Uniform Cost Search (Dijkstra con parada temprana) | O((V + E) log V) | O(V + E) |
+| `GET /api/grafo/ucs/comparacion` | Opc. | UCS vs. Dijkstra (nodos expandidos) | O((V + E) log V) | O(V + E) |
 
 ---
 
@@ -891,6 +895,51 @@ personajes que objetos y casos borde) y `SeleccionControllerTest`.
 
 ---
 
-### Endpoint opcional pendiente
+### GET /api/grafo/ucs  *(opcional)*
 
-- **`GET /api/grafo/ucs?origen=VB1&destino=CC11` (Opcional — Uniform Cost Search):** responde `501 Not Implemented` (`{"estado":"PENDIENTE","detalle":"Algoritmo aun no implementado: UCS"}`).
+Uniform Cost Search: el mismo greedy que Dijkstra, pero **se detiene al sacar
+el destino del heap**. Devuelve el mismo camino y costo que Dijkstra.
+
+**Parámetros:** `origen`, `destino` (ids de zona)
+
+**Ejemplo:** `GET /api/grafo/ucs?origen=DA4&destino=DA9`
+
+**Respuesta:**
+```json
+{ "vertices": ["DA4", "DA5", "DA6", "DA9"], "costoTotal": 11.0 }
+```
+`DA9` entra al heap primero con 13 (por `DA7`), pero sale con 11: por eso la
+parada es al **expandir** el destino y no al encolarlo. Al salir del heap es la
+zona abierta de menor distancia y, con costos ≥ 0, ningún rodeo la puede abaratar.
+
+**Errores:** zona inexistente o arista de costo negativo → `400`.
+
+**Complejidad temporal:** O((V + E) log V) en el peor caso (cuando el destino es la
+última zona en cerrarse), igual que Dijkstra. En la práctica expande sólo las zonas
+con `dist < dist[destino]`.
+
+**Complejidad espacial:** O(V + E): `dist[]`, `predecesor[]`, `visitado[]` y el heap.
+
+**Estructura usada:** lista de adyacencia + `PriorityQueue` con borrado perezoso.
+
+### GET /api/grafo/ucs/comparacion  *(opcional)*
+
+Corre UCS y Dijkstra completo sobre la misma consulta y cuenta las zonas expandidas.
+
+**Ejemplo:** `GET /api/grafo/ucs/comparacion?origen=VB1&destino=VB8`
+
+**Respuesta:**
+```json
+{
+  "camino": { "vertices": ["VB1","VB2","VB3","VB5","VB6","VB8"], "costoTotal": 20.0 },
+  "ucsNodosExpandidos": 8,
+  "dijkstraNodosExpandidos": 38,
+  "mismoCosto": true
+}
+```
+UCS cierra las 8 zonas del Valle de Brezo y se detiene; Dijkstra sigue hasta
+cerrar las 38 del reino. **Complejidad:** O((V + E) log V), dominada por Dijkstra.
+
+**Tests:** `UcsTest` (5 casos: mismo costo que Dijkstra en los 38 × 38 pares,
+nodos expandidos, el caso DA4 → DA9 que rompe la parada al encolar, origen = destino
+y casos borde) y `GrafoControllerTest`.

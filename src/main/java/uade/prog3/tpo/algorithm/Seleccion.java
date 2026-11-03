@@ -33,6 +33,9 @@ public class Seleccion {
             Comparator.comparingDouble(Item::ratioValorPeso).reversed()
                     .thenComparing(Item::getId);
 
+    /** Tope de celdas de la tabla dp (unos 80 MB de doubles). */
+    static final long MAX_CELDAS_DP = 10_000_000L;
+
     private final Ordenamiento ordenamiento;
 
     public Seleccion(Ordenamiento ordenamiento) {
@@ -57,8 +60,8 @@ public class Seleccion {
      * aprovechado mejor (ver el ejemplo del Valle de Brezo arriba).
      */
     public Resultado greedy(List<Item> items, double capacidad) {
-        if (capacidad < 0) {
-            throw new IllegalArgumentException("La capacidad no puede ser negativa: " + capacidad);
+        if (!(capacidad >= 0)) {   // tambien rechaza NaN (?capacidad=NaN se parsea como double)
+            throw new IllegalArgumentException("La capacidad debe ser un numero no negativo: " + capacidad);
         }
         List<Item> ordenados = ordenamiento.mergeSort(items, POR_RATIO_DESCENDENTE);
 
@@ -106,6 +109,12 @@ public class Seleccion {
             throw new IllegalArgumentException("La capacidad no puede ser negativa: " + capacidad);
         }
         int n = items.size();
+        // La tabla tiene (n+1)(W+1) celdas: con una W enorme (ej. capacidad=2000000000)
+        // reservarla tiraria OutOfMemoryError. Se rechaza antes con un 400.
+        if ((long) (n + 1) * ((long) capacidad + 1) > MAX_CELDAS_DP) {
+            throw new IllegalArgumentException("La tabla dp tendria " + (n + 1) + " x " + ((long) capacidad + 1)
+                    + " celdas (maximo " + MAX_CELDAS_DP + "). Es pseudopolinomica: O(n * W) crece con el VALOR de W.");
+        }
         int[] peso = new int[n];
         for (int i = 0; i < n; i++) {
             double p = items.get(i).getPeso();
