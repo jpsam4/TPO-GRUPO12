@@ -5,6 +5,7 @@ import uade.prog3.tpo.model.Item;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,10 +91,13 @@ public class RamificacionYPoda {
      *     y se corta la busqueda;
      *   - los personajes son identicos: mandar el objeto a dos personajes con
      *     la misma carga genera subarboles equivalentes, asi que se prueba
-     *     solo el primero (poda por simetria).
+     *     solo el primero (poda por simetria). Las cargas ya probadas en el
+     *     nodo se guardan en un HashSet: cada hijo se descarta o se acepta en
+     *     O(1) esperado y el trabajo propio de un nodo queda en O(k).
      *
      * Complejidad temporal: O(k^n) en el peor caso (el arbol completo tiene
-     *   1 + k + ... + k^n nodos). Con la cota se explora una fraccion minima:
+     *   1 + k + ... + k^n nodos y cada uno hace O(k) trabajo propio:
+     *   T(n) = k * T(n-1) + O(k)). Con la cota se explora una fraccion minima:
      *   con 25 objetos y 3 personajes, 546 nodos de 1.270.932.914.164.
      * Complejidad espacial: O(n + k): la recursion tiene profundidad n y se
      *   guardan las cargas de los k personajes y la mejor asignacion.
@@ -132,7 +136,15 @@ public class RamificacionYPoda {
         if (cantidadContenedores < 1) {
             throw new IllegalArgumentException("La cantidad de contenedores debe ser al menos 1");
         }
+        if (cantidadContenedores > MAXIMO_CONTENEDORES) {
+            throw new IllegalArgumentException("La cantidad de contenedores debe ser a lo sumo "
+                    + MAXIMO_CONTENEDORES + ": con mas personajes que objetos el reparto es trivial"
+                    + " y la respuesta crece con k");
+        }
     }
+
+    /** Tope de k: el reino tiene 25 objetos, repartirlos entre mas de 100 personajes no tiene sentido. */
+    public static final int MAXIMO_CONTENEDORES = 100;
 
     private void explorar(Busqueda b, int i, double cargaMaxima) {
         b.explorados++;
@@ -144,12 +156,13 @@ public class RamificacionYPoda {
             return;
         }
         double peso = b.items[i].getPeso();
+        HashSet<Double> cargasProbadas = new HashSet<>();
         for (int c = 0; c < b.k; c++) {
             if (b.mejor <= b.cota) {
                 return;                                     // ya se alcanzo la cota global: es optimo
             }
-            if (mismaCargaQueUnoAnterior(b, c)) {
-                continue;                                   // poda por simetria
+            if (!cargasProbadas.add(b.cargas[c])) {
+                continue;                                   // poda por simetria: misma carga que un personaje anterior
             }
             double nuevaMaxima = Math.max(cargaMaxima, b.cargas[c] + peso);
             double cotaHijo = Math.max(nuevaMaxima, b.cota);
@@ -164,14 +177,6 @@ public class RamificacionYPoda {
         }
     }
 
-    private static boolean mismaCargaQueUnoAnterior(Busqueda b, int c) {
-        for (int anterior = 0; anterior < c; anterior++) {
-            if (b.cargas[anterior] == b.cargas[c]) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private static Asignacion armarResultado(Busqueda b, double total) {
         Map<String, List<Item>> porContenedor = new LinkedHashMap<>();

@@ -132,10 +132,13 @@ class RamificacionYPodaTest {
     }
 
     @Test
-    @DisplayName("Sin objetos todos cargan 0; con 0 personajes falla con IllegalArgumentException")
+    @DisplayName("Sin objetos todos cargan 0; con 0 personajes o mas de 100 falla con IllegalArgumentException")
     void casosBorde() {
         RamificacionYPoda.Asignacion a = bb.repartir(List.of(), 3);
         assertEquals(0.0, a.cargaMaxima());
         assertThrows(IllegalArgumentException.class, () -> bb.repartir(DatosValdoria.items(), 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> bb.repartir(DatosValdoria.items(), RamificacionYPoda.MAXIMO_CONTENEDORES + 1));
+        assertEquals(7.0, bb.repartir(DatosValdoria.items(), RamificacionYPoda.MAXIMO_CONTENEDORES).cargaMaxima());
     }
 }

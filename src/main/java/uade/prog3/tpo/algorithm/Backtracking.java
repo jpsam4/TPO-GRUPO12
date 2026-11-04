@@ -234,8 +234,8 @@ public class Backtracking {
         int origen = grafo.indiceDe(origenId);     // si no existe: IllegalArgumentException -> 400
         grafo.indiceDe(destinoId);
 
-        if (costoMaximo < 0) {
-            throw new IllegalArgumentException("El costo maximo no puede ser negativo: " + costoMaximo);
+        if (!(costoMaximo >= 0)) {                  // asi tambien se rechaza NaN, que no es >= 0
+            throw new IllegalArgumentException("El costo maximo debe ser un numero no negativo: " + costoMaximo);
         }
         if (saltosMaximos < 0) {
             throw new IllegalArgumentException("La cantidad maxima de saltos no puede ser negativa: " + saltosMaximos);

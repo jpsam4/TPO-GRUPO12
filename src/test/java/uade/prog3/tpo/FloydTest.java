@@ -180,4 +180,11 @@ class FloydTest {
             }
         }
     }
+
+    @Test
+    @DisplayName("Una curacion que no es un numero finito se rechaza con IllegalArgumentException (400)")
+    void curacionNoFinita() {
+        assertThrows(IllegalArgumentException.class, () -> servicio.cargarConCuracion(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> servicio.cargarConCuracion(Double.POSITIVE_INFINITY));
+    }
 }

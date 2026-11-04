@@ -198,6 +198,7 @@ class BacktrackingTest {
         assertThrows(IllegalArgumentException.class, () -> backtracking.rutasSimples(g, "NO_EXISTE", "VB8", 30, 5));
         assertThrows(IllegalArgumentException.class, () -> backtracking.rutasSimples(g, "VB1", "NO_EXISTE", 30, 5));
         assertThrows(IllegalArgumentException.class, () -> backtracking.rutasSimples(g, "VB1", "VB8", -1, 5));
+        assertThrows(IllegalArgumentException.class, () -> backtracking.rutasSimples(g, "VB1", "VB8", Double.NaN, 5));
         assertThrows(IllegalArgumentException.class, () -> backtracking.rutasSimples(g, "VB1", "VB8", 30, -1));
 
         Grafo conNegativa = new Grafo(true);
