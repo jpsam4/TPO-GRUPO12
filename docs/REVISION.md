@@ -24,7 +24,7 @@ penalizaciones). Hecha con Claude Code (ver «Uso de IA» en el README).
 
 | # | Hallazgo | Riesgo según la consigna | Estado |
 |---|---|---|---|
-| 1 | `docs/RED-Y-CONEXION.md` mostraba la password local de Neo4j. | Admisibilidad: «ninguna credencial en el repositorio». | **Parcial**: se quitó del árbol actual, pero **sigue en el historial** desde `0863c80` (`git log -p -S <la password local de ese momento>` la encuentra). Hasta reescribir el historial, la entrega sigue sin cumplir 4.2 (ver §3). |
+| 1 | `docs/RED-Y-CONEXION.md` mostraba la password local de Neo4j. | Admisibilidad: «ninguna credencial en el repositorio». | **Corregido**: se quitó del árbol y se reescribió el historial para que tampoco aparezca en commits anteriores (ver §3). |
 | 2 | `SeleccionController` tenía un `for` que filtraba objetos por región. | −0,5: «lógica dentro de un controller». | **Corregido**: se movió a `service/ItemService`. |
 | 3 | `ManejadorDeErrores` no tenía red de seguridad: un error no previsto (base caída) o una excepción con mensaje `null` (`Map.of` tira NPE) salía con la respuesta por defecto de Spring. | −0,5: «endpoint que devuelve un stack trace». | **Corregido**: handler genérico (500 con mensaje genérico, detalle sólo en el log), 404/405 en JSON y cuerpo null-safe. |
 | 4 | `/api/seleccion/dinamica?capacidad=2000000000` reservaba una tabla de (n+1)·(W+1) doubles → `OutOfMemoryError`. | «Corre sin error». | **Corregido**: tope de 10⁷ celdas → 400 con la explicación de por qué es pseudopolinómica. |
@@ -36,19 +36,12 @@ Tests después de las correcciones: **118**, todos en verde (`./mvnw test`).
 Nuevos: `UcsTest` (5), y casos en `GrafoControllerTest` (500 sin traza, 404,
 405, UCS) y `SeleccionTest` (NaN, capacidad enorme).
 
-## 3. Pendientes que tiene que resolver el grupo
+## 3. Pendientes de la entrega (resueltos)
 
-1. **Tag `entrega-final`** (Hito 12, obligatorio): no existe ni local ni en
-   `origin`. Sin el tag la entrega no se corrige.
-2. **Credencial en el historial**: `NEO4J_PASSWORD=<la password local de ese momento>` aparece desde el
-   commit `0863c80`. La admisibilidad pide que no haya credenciales «ni en el
-   historial de commits». Opciones: reescribir el historial
-   (`git filter-repo --replace-text`) y hacer *force push*, o como mínimo dejar
-   asentado que era una password de una base local ya descartada y cambiarla. El
-   `12345678` del primer commit viene del scaffold de la cátedra.
-3. **Participación**: el historial muestra commits de los tres integrantes
-   (Joaquin con 3 bajo dos emails distintos). Conviene unificar con un
-   `.mailmap` para que el conteo se vea claro.
+1. **Tag `entrega-final`** (Hito 12, obligatorio): **creado** sobre el commit que se corrige.
+2. **Credencial en el historial**: **resuelto**. Se reescribió el historial para quitar la password local de Neo4j de todos los commits; era de una base local en Docker ya descartada, nunca de Aura.
+3. **Participación**: **resuelto**. El `.mailmap` unifica los nombres y emails
+   de cada integrante, así `git shortlog -sn` muestra un renglón por persona.
 
 ## 4. Preguntas probables del coloquio sobre este código
 
