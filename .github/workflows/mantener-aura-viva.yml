@@ -4,15 +4,20 @@ name: Mantener Aura viva
 # actividad y despues de un tiempo pausadas se BORRAN. Ya perdimos una asi
 # (la instancia 8b37b6ab, creada el 12/08/2026, dejo de existir).
 #
-# Este workflow le manda una consulta trivial cada dos dias para que la base
-# figure como activa. Va por HTTPS (Query API, puerto 443), asi que funciona
-# desde cualquier lado, incluida la red de la facultad que bloquea el 7687.
+# Este workflow le escribe a la base todos los dias para que figure como
+# activa. Va por HTTPS (Query API, puerto 443), asi que funciona desde
+# cualquier lado, incluida la red de la facultad que bloquea el 7687.
+#
+# Por que una ESCRITURA y todos los dias: hasta octubre se mandaba una lectura
+# cada dos dias y la instancia se pauso igual el 04/10, con menos de 72 h entre
+# consultas. Las lecturas solas no alcanzan para que Aura la considere activa.
+# El latido es un nodo :Latido aparte; la app solo lee :Nodo e :Item, asi que
+# no toca los datos del reino.
 
 on:
   schedule:
-    # 12:00 UTC (09:00 en Argentina) cada dos dias. El margen es a proposito:
-    # Aura pausa a los ~3 dias y los cron de GitHub a veces se atrasan.
-    - cron: '0 12 */2 * *'
+    # 12:00 UTC (09:00 en Argentina), todos los dias.
+    - cron: '0 12 * * *'
   workflow_dispatch:        # tambien se puede correr a mano desde la pestaña Actions
 
 jobs:
@@ -48,7 +53,7 @@ jobs:
             -u "${NEO4J_USER}:${NEO4J_PASSWORD}" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json' \
-            -d '{"statement":"MATCH (n:Nodo) RETURN count(n) AS nodos"}' \
+            -d '{"statement":"MERGE (l:Latido {id: \"keep-alive\"}) SET l.ultimo = datetime() WITH l MATCH (n:Nodo) RETURN count(n) AS nodos"}' \
             "${URL}")
 
           echo "Respuesta: ${RESPUESTA}"
