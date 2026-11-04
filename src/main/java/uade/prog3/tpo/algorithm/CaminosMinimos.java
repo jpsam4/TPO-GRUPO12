@@ -51,10 +51,11 @@ public class CaminosMinimos {
      *
      * Complejidad temporal: O((V + E) log V) con heap binario (PriorityQueue) y
      *   lista de adyacencia. Cada vertice se cierra a lo sumo una vez y cada
-     *   arista produce a lo sumo una insercion en el heap de tamano <= E
-     *   (y log E <= 2 log V = O(log V)).
+     *   arista produce a lo sumo una insercion en el heap. En un grafo no
+     *   dirigido cada camino aparece en las dos listas de adyacencia, asi que
+     *   el heap tiene a lo sumo 2E entradas (y log 2E <= 2 log V + 1 = O(log V)).
      * Complejidad espacial: O(V + E). Arreglos dist[], predecesor[] y visitado[]
-     *   de tamano V, mas la cola de prioridad con a lo sumo E entradas.
+     *   de tamano V, mas la cola de prioridad con a lo sumo 2E entradas.
      *
      * Para el coloquio:
      *   - Es greedy porque al cerrar el vertice u de menor dist[u], asume que

@@ -138,7 +138,7 @@ public class ArbolRecubrimiento {
      * Complejidad temporal: O(E log E) = O(E log V). Ordenar las E aristas
      *   cuesta O(E log E) y domina a las 2E operaciones find y V-1 operaciones
      *   union sobre el Union-Find, que con compresion de caminos y union por
-     *   rango cuestan O(E * alpha(V)), practicamene lineal.
+     *   rango cuestan O(E * alpha(V)), practicamente lineal.
      * Complejidad espacial: O(V + E). Arreglos padre[] y rango[] de tamano V,
      *   mas el arreglo de E aristas y su auxiliar para el ordenamiento.
      *

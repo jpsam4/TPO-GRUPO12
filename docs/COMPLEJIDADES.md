@@ -28,7 +28,7 @@ no la de la red ni la de la base.
 | Mochila 0/1 | Programación dinámica | dp[i][j] = max(dp[i−1][j], dp[i−1][j−pᵢ] + vᵢ) | O(n · W) (pseudopolinómica) | O(n · W) | Matriz `double[n+1][W+1]` |
 | Floyd-Warshall | Programación dinámica | dₖ[i][j] = min(dₖ₋₁[i][j], dₖ₋₁[i][k] + dₖ₋₁[k][j]) | O(V³) | O(V²) | Matriz de adyacencia `double[V][V]` + matriz `int[V][V]` de siguientes |
 | Backtracking de rutas | Backtracking | T(d) = b · T(d−1) + O(1) | O(b^d), hasta O(V!) sin límite de saltos | O(V) | Lista de adyacencia + `boolean[] visitado` + camino parcial como pila + recursión |
-| Branch & Bound de reparto | Ramificación y poda | T(n) = k · T(n−1) + O(k) | O(kⁿ) peor caso | O(n + k) | Arreglo `Item[]` ordenado por peso + `double[k]` de cargas + `int[n]` de asignación + recursión |
+| Branch & Bound de reparto | Ramificación y poda | T(n) = k · T(n−1) + O(k) | O(kⁿ) peor caso | O(n + k) | Arreglo `Item[]` ordenado por peso + `double[k]` de cargas + `int[n]` de asignación + `HashSet` de cargas por nodo (simetría en O(1)) + recursión |
 
 ## Justificación de cada una
 
@@ -100,7 +100,9 @@ parcial y la pila de recursión.
 ### Branch & Bound de reparto — O(kⁿ)
 Cada objeto puede ir a cualquiera de los k personajes:
 T(n) = k · T(n−1) + O(k) = O(kⁿ); el árbol completo tiene 1 + k + … + kⁿ
-nodos. La cota inferior optimista max(carga máxima actual, ⌈total / k⌉) poda
+nodos. El O(k) de cada nodo es el recorrido de los k personajes: la poda por
+simetría consulta un `HashSet` con las cargas ya probadas en el nodo en O(1)
+esperado, en lugar de comparar contra todos los anteriores (eso sería O(k²)). La cota inferior optimista max(carga máxima actual, ⌈total / k⌉) poda
 las ramas que no pueden mejorar la mejor solución: con 25 objetos y 3
 personajes explora 546 nodos de 1.270.932.914.164. El peor caso sigue siendo
 exponencial (el problema es NP-difícil). Espacio O(n + k): profundidad n de

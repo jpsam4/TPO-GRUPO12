@@ -192,9 +192,9 @@ Cruza las 4 regiones pasando por 22 zonas: 20 en Valle de Brezo + 5 del paso + 2
 
 **Errores:** un `origen` o `destino` inexistente o un grafo con aristas de costo negativo devuelve `400 Bad Request`.
 
-**Complejidad temporal:** O((V + E) log V) con cola de prioridad basada en heap binario y lista de adyacencia. Cada zona se cierra a lo sumo una vez (O(V log V) en extracciones válidas) y cada camino se examina una vez por extremo, provocando a lo sumo una inserción en el heap de tamaño <= E (y como E <= V², log E = O(log V), sumando O(E log V) en relajaciones).
+**Complejidad temporal:** O((V + E) log V) con cola de prioridad basada en heap binario y lista de adyacencia. Cada zona se cierra a lo sumo una vez (O(V log V) en extracciones válidas) y cada camino se examina una vez por extremo, provocando a lo sumo una inserción en el heap. Como el grafo es no dirigido, cada camino aparece en las dos listas de adyacencia: el heap tiene a lo sumo 2E entradas, y como 2E <= 2V², log(2E) = O(log V), sumando O(E log V) en relajaciones.
 
-**Complejidad espacial:** O(V + E): arreglos `dist[]`, `predecesor[]` y `visitado[]` de tamaño V, más la cola de prioridad con a lo sumo E entradas pendientes (borrado perezoso de entradas desplazadas por una relajación).
+**Complejidad espacial:** O(V + E): arreglos `dist[]`, `predecesor[]` y `visitado[]` de tamaño V, más la cola de prioridad con a lo sumo 2E entradas pendientes (una por arco) (borrado perezoso de entradas desplazadas por una relajación).
 
 **Estructura usada:** lista de adyacencia + `PriorityQueue` (heap binario) + arreglos `double[] dist`, `int[] predecesor` (para reconstruir el camino hacia atrás desde `destino` hasta `origen` con una `ArrayDeque`) y `boolean[] visitado`.
 
@@ -218,7 +218,8 @@ que el neto es **−3**. Volver de VB2 a VB1 cuesta **3**: el grafo neto queda
 se va.
 
 **Parámetros:** `curacion` (opcional): reemplaza lo que curan las fuentes. Sirve
-para mostrar la detección de ciclos negativos.
+para mostrar la detección de ciclos negativos. Tiene que ser un número finito:
+`NaN` o `Infinity` devuelven `400 Bad Request`.
 
 **Ejemplo:** `GET /api/grafo/floyd`
 
@@ -262,7 +263,7 @@ No depende de la cantidad de aristas.
 **Estructura usada:** matriz de adyacencia `double[V][V]` (de
 `Grafo.matrizDeAdyacencia()`) + matriz `int[V][V]` de siguientes.
 
-**Tests:** `FloydTest` (11 casos) y `GrafoControllerTest`.
+**Tests:** `FloydTest` (12 casos) y `GrafoControllerTest`.
 
 ---
 
@@ -340,7 +341,7 @@ corridas de Dijkstra reutilizan arreglos `dist[]` y `predecesor[]` de tamaño V)
 **Estructura usada:** matrices `double[V][V]` e `int[V][V]` para Floyd + lista
 de adyacencia y `PriorityQueue` (heap binario) para las V corridas de Dijkstra.
 
-**Tests:** `FloydTest` (11 casos: grafo chico con arista negativa calculado a
+**Tests:** `FloydTest` (12 casos: grafo chico con arista negativa calculado a
 mano, reconstrucción del camino, detección de un ciclo negativo, V³ ternas,
 VB1→CC11 = 103 con energía y 79 con costo neto, VB1→VB2 = −3, sin ciclos con
 los datos reales, ciclo VB2→VB1→VB2 con curación 7, y Floyd igual a Dijkstra
@@ -636,7 +637,7 @@ También con el reino completo: con `capacidad=8`, greedy junta 75 de poder
 (Antorcha ígnea, Lanza ígnea, Espada del desierto y Gema) y el óptimo es 79
 (Hacha ígnea + Lanza ígnea).
 
-**Tests:** `SeleccionTest` (9 casos) y `SeleccionControllerTest`.
+**Tests:** `SeleccionTest` (11 casos) y `SeleccionControllerTest`.
 
 ---
 
@@ -704,11 +705,11 @@ duplicar la capacidad duplica el trabajo aunque la entrada casi no crezca.
 
 **Estructura usada:** matriz `double[n+1][W+1]`.
 
-**Tests:** `SeleccionTest` (9 casos: el ejemplo del Valle de Brezo, greedy
+**Tests:** `SeleccionTest` (11 casos: el ejemplo del Valle de Brezo, greedy
 pierde en las cuatro regiones, PD contra fuerza bruta en cada región para
 capacidades de 0 a 30, 200 casos al azar donde los objetos recuperados suman lo
 informado, greedy nunca supera al óptimo, casos vacíos, datos inválidos y
-entrada sin modificar) y `SeleccionControllerTest` (6 casos sobre los endpoints HTTP).
+entrada sin modificar) y `SeleccionControllerTest` (7 casos sobre los endpoints HTTP).
 
 ---
 
@@ -749,7 +750,7 @@ En el Valle de Brezo existen **13 caminos simples** en total entre `VB1` y `VB8`
    Como todas las aristas tienen costo `>= 0`, el costo parcial es **monótono creciente**: apenas una rama supera `costoMaximo`, ninguna extensión futura puede volverla válida y se corta el subárbol completo sin perder soluciones.
 3. **Retroceso (backtrack):** al volver de la llamada recursiva elimina `sig` del camino parcial y desmarca `visitado[sig] = false` para que otras ramas puedan pasar por esa zona.
 
-**Errores:** zona inexistente, `costoMaximo < 0`, `saltosMaximos < 0` o aristas de costo negativo devuelven `400 Bad Request`.
+**Errores:** zona inexistente, `costoMaximo` negativo o que no es un número (`NaN`), `saltosMaximos < 0` o aristas de costo negativo devuelven `400 Bad Request`.
 
 **Complejidad temporal:** exponencial en el peor caso, **O(b^d)** acotada por `d = saltosMaximos` (con factor de ramificación `b <= V - 1`), y hasta **O(V!)** sin límite efectivo de saltos sobre un grafo denso (entre dos vértices de un grafo completo hay `(V - 2)!` caminos simples). En la práctica la poda por costo y saltos evita expandir subárboles enteros apenas se excede el presupuesto.
 
@@ -796,7 +797,7 @@ Ejecuta la misma consulta de caminos simples **con poda** y **sin poda** (fuerza
 
 **Conclusión:** a medida que el camino atraviesa más regiones, la cantidad de caminos simples sin podar se multiplica exponencialmente entre regiones (`485.647` estados). Podar en cuanto el costo parcial supera `105` o los tramos superan `22` descarta un desvío caro en el Valle de Brezo **antes** de multiplicarlo por todas las combinaciones de Ciénagas, Dunas y Cumbres, reduciendo el árbol explorado en más de un orden de magnitud sin perder ninguna de las 34 rutas válidas (`mismasRutas: true`).
 
-**Errores:** zona inexistente, `costoMaximo < 0`, `saltosMaximos < 0` o aristas negativas → `400 Bad Request`.
+**Errores:** zona inexistente, `costoMaximo` negativo o `NaN`, `saltosMaximos < 0` o aristas negativas → `400 Bad Request`.
 
 **Complejidad temporal:** dominada por la corrida sin poda, exponencial **O(V!)** en el peor caso (misma cota asintótica superior, ya que ejecuta primero la búsqueda podada O(b^d) y luego la enumeración exhaustiva de caminos simples para comparar).
 
@@ -814,7 +815,7 @@ Reparte el botín (los objetos) entre `k` personajes de forma que **el que más
 carga, cargue lo menos posible** (minimizar el *makespan*). Branch & Bound:
 backtracking que poda por **optimalidad** usando una cota.
 
-**Parámetros:** `contenedores` (cantidad de personajes, al menos 1).
+**Parámetros:** `contenedores` (cantidad de personajes, entre 1 y 100).
 
 **Ejemplo:** `GET /api/seleccion/repartir?contenedores=3`
 
@@ -876,22 +877,30 @@ contienen el óptimo y el resultado dejaría de ser óptimo.
 Con otras cantidades de personajes también llega al reparto perfecto: 54 kg con
 2, 27 con 4, 22 con 5 (techo de 21,6), 18 con 6, 16 con 7 y 14 con 8.
 
-**Errores:** `contenedores < 1` devuelve `400 Bad Request`.
+**Errores:** `contenedores` menor que 1 o mayor que 100 devuelve `400 Bad Request` (se valida antes de consultar la base).
 
 **Complejidad temporal:** O(kⁿ) en el peor caso, porque el árbol tiene
-1 + k + … + kⁿ nodos. La cota no cambia el peor caso, pero en la práctica
-explora una fracción mínima (546 de 1,27 billones).
+1 + k + … + kⁿ nodos y cada nodo hace O(k) trabajo propio: recorre los k
+personajes, y la poda por simetría consulta en O(1) un `HashSet` con las cargas
+ya probadas en ese nodo. Recurrencia T(n) = k · T(n−1) + O(k). La cota no
+cambia el peor caso, pero en la práctica explora una fracción mínima (546 de
+1,27 billones).
+
+`nodosPodados` cuenta las ramas descartadas por la **cota**. Las que descarta la
+simetría (mandar el objeto a un personaje con la misma carga que otro ya
+probado) no se cuentan ahí: no se evalúa su cota, ni siquiera se generan.
 
 **Complejidad espacial:** O(n + k): la recursión tiene profundidad n y se
 guardan las cargas de los k personajes y la mejor asignación.
 
 **Estructura usada:** arreglo `Item[]` ordenado por peso, arreglo `double[k]`
-de cargas, arreglo `int[n]` con la asignación actual y la mejor, y recursión.
+de cargas, arreglo `int[n]` con la asignación actual y la mejor, un `HashSet`
+de cargas por nodo para la poda por simetría, y recursión.
 
 **Tests:** `RamificacionYPodaTest` (7 casos: el reparto de 36 kg con 3
 personajes, 546 nodos explorados y 760 podados, de 1 a 8 personajes, 300 casos
 al azar contra fuerza bruta, un caso donde el promedio no se alcanza, más
-personajes que objetos y casos borde) y `SeleccionControllerTest`.
+personajes que objetos y casos borde, incluido el tope de 100 personajes) y `SeleccionControllerTest`.
 
 ---
 

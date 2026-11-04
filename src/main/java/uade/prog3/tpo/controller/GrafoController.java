@@ -124,7 +124,7 @@ public class GrafoController {
         return arbolRecubrimiento.kruskal(grafoService.cargar(NO_DIRIGIDO));
     }
 
-    /** GET /api/grafo/rutas?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=6 */
+    /** GET /api/grafo/rutas?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=5 */
     @GetMapping("/rutas")
     public List<Backtracking.Ruta> rutas(@RequestParam String origen,
                                          @RequestParam String destino,
@@ -134,7 +134,7 @@ public class GrafoController {
                 costoMaximo, saltosMaximos);
     }
 
-    /** GET /api/grafo/rutas/comparacion?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=6 */
+    /** GET /api/grafo/rutas/comparacion?origen=VB1&destino=VB8&costoMaximo=22&saltosMaximos=5 */
     @GetMapping("/rutas/comparacion")
     public Backtracking.ComparacionPoda rutasComparacion(@RequestParam String origen,
                                                          @RequestParam String destino,
