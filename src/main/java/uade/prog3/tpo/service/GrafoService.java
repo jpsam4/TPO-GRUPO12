@@ -37,7 +37,7 @@ public class GrafoService {
      */
     public Grafo cargar(boolean dirigido) {
         Grafo grafo = new Grafo(dirigido);
-        List<Nodo> nodos = almacen.todosLosNodos();
+        List<Nodo> nodos = OrdenDelReino.zonas(almacen.todosLosNodos());
 
         // 1) primero todos los vertices, para que queden en el grafo
         //    incluso los que no tienen ninguna arista
@@ -53,6 +53,8 @@ public class GrafoService {
         }
 
         // 3) vecinos en orden fijo, para que los recorridos sean reproducibles
+        //    (junto con el orden de las zonas, el resultado no depende del
+        //    orden en que Neo4j devuelve las filas)
         grafo.ordenarVecinosPorId();
 
         log.info("Grafo cargado: {} vertices, {} aristas, dirigido={}",
@@ -75,8 +77,11 @@ public class GrafoService {
      *                        con 7, ir y volver entre VB1 y VB2 cuesta 3-7 + 3 = -1.
      */
     public Grafo cargarConCuracion(Double curacionFuentes) {
+        if (curacionFuentes != null && !Double.isFinite(curacionFuentes)) {
+            throw new IllegalArgumentException("La curacion debe ser un numero finito: " + curacionFuentes);
+        }
         Grafo grafo = new Grafo(true);
-        List<Nodo> nodos = almacen.todosLosNodos();
+        List<Nodo> nodos = OrdenDelReino.zonas(almacen.todosLosNodos());
         for (Nodo n : nodos) {
             grafo.agregarVertice(n.getId());
         }

@@ -27,9 +27,12 @@ public class ItemService {
         this.almacen = almacen;
     }
 
-    /** Los 25 objetos del reino. Una sola consulta a la base. */
+    /**
+     * Los 25 objetos del reino, en el orden del reino (ver {@link OrdenDelReino}).
+     * Una sola consulta a la base.
+     */
     public List<Item> todos() {
-        return almacen.todosLosItems();
+        return OrdenDelReino.objetos(almacen.todosLosItems());
     }
 
     /**

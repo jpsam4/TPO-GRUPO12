@@ -77,12 +77,26 @@ public class Grafo {
      * Neo4j no garantiza en que orden devuelve los nodos ni las relaciones, y
      * BFS y DFS visitan los vecinos en el orden de la lista. Ordenarlas una vez
      * al cargar hace que los recorridos den siempre el mismo resultado y se
-     * puedan verificar a mano. Es un paso de la carga, O(E log E), y no cambia
-     * la complejidad de los algoritmos, que despues recorren las listas tal cual.
+     * puedan verificar a mano. Es un paso de la carga y no cambia la
+     * complejidad de los algoritmos, que despues recorren las listas tal cual.
+     *
+     * Se ordena por insercion, implementada aca: cada zona tiene a lo sumo 5
+     * vecinos, y para listas tan cortas la insercion es lo mas simple y rapido.
+     * El costo total es la suma de grado(v)^2, que con grado maximo g queda en
+     * O(E * g); en Valdoria (g = 5) son unas pocas centenas de comparaciones.
      */
     public void ordenarVecinosPorId() {
         for (List<Arista> vecinos : adyacencia) {
-            vecinos.sort((a, b) -> ids.get(a.destino()).compareTo(ids.get(b.destino())));
+            for (int i = 1; i < vecinos.size(); i++) {
+                Arista actual = vecinos.get(i);
+                String id = ids.get(actual.destino());
+                int j = i - 1;
+                while (j >= 0 && ids.get(vecinos.get(j).destino()).compareTo(id) > 0) {
+                    vecinos.set(j + 1, vecinos.get(j));
+                    j--;
+                }
+                vecinos.set(j + 1, actual);
+            }
         }
     }
 
